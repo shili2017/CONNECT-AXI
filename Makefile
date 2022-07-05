@@ -1,5 +1,6 @@
 SRC_DIR = ./src
 BUILD_DIR = ./build
+TEST_DIR = ./test_run_dir
 
 CHISEL_SRC = $(SRC_DIR)/main/scala/*.scala
 ARTIFACT = $(BUILD_DIR)/Top.v
@@ -18,17 +19,11 @@ $(ARTIFACT): $(CHISEL_SRC)
 	@mkdir -p $(BUILD_DIR)
 	sbt "run -td $(BUILD_DIR)"
 
-obj_dir/V$(TOP_MODULE): $(ARTIFACT) $(VERILATOR_INPUT)
-	verilator $(VERILATOR_FLAGS) $(VERILATOR_INPUT)
-	$(MAKE) -j -C obj_dir -f V$(TOP_MODULE).mk
-
-sim: obj_dir/V$(TOP_MODULE) $(ROUTING_INPUT)
-	cp $(ROUTING_INPUT) $(BUILD_DIR)
-	cp obj_dir/V$(TOP_MODULE) $(BUILD_DIR)
-	cd $(BUILD_DIR) && ./V$(TOP_MODULE) +trace
+test: $(CHISEL_SRC)
+	sbt test
 
 clean:
-	-rm -rf obj_dir
 	-rm -rf $(BUILD_DIR)
+	-rm -rf $(TEST_DIR)
 
-.PHONY: all sim clean
+.PHONY: all test clean
