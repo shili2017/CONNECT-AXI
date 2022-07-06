@@ -5,9 +5,9 @@ import chisel3.util._
 
 class AXI4MasterBridge(val ID: Int) extends Module with Config {
   val io = IO(new Bundle {
-    val axi      = Flipped(new AXI4IO)
-    val put_flit = Decoupled(UInt(AXI4FlitWidth().W))
-    val get_flit = Flipped(Decoupled(UInt(AXI4FlitWidth().W)))
+    val axi        = Flipped(new AXI4IO)
+    val put_packet = Decoupled(UInt(AXI4PacketWidth().W))
+    val get_packet = Flipped(Decoupled(UInt(AXI4PacketWidth().W)))
   })
 
   // State definitions
@@ -29,7 +29,7 @@ class AXI4MasterBridge(val ID: Int) extends Module with Config {
       }
     }
     is(s_wresp1) {
-      when(io.get_flit.fire) {
+      when(io.get_packet.fire) {
         state := s_wresp2
       }
     }
@@ -39,7 +39,7 @@ class AXI4MasterBridge(val ID: Int) extends Module with Config {
       }
     }
     is(s_rdata1) {
-      when(io.get_flit.fire) {
+      when(io.get_packet.fire) {
         state := s_rdata2
       }
     }
@@ -54,77 +54,77 @@ class AXI4MasterBridge(val ID: Int) extends Module with Config {
     }
   }
 
-  // Put flit destination
-  val put_flit_dst_reg = RegInit(0.U(DEST_BITS.W))
+  // Put packet destination
+  val put_packet_dst_reg = RegInit(0.U(DEST_BITS.W))
   when(io.axi.aw.fire) {
-    put_flit_dst_reg := GetDestFromAXI4ChannelA(io.axi.aw.bits)
+    put_packet_dst_reg := GetDestFromAXI4ChannelA(io.axi.aw.bits)
   }.elsewhen(io.axi.ar.fire) {
-    put_flit_dst_reg := GetDestFromAXI4ChannelA(io.axi.ar.bits)
+    put_packet_dst_reg := GetDestFromAXI4ChannelA(io.axi.ar.bits)
   }
-  val put_flit_dst = Wire(UInt(DEST_BITS.W))
+  val put_packet_dst = Wire(UInt(DEST_BITS.W))
   when(io.axi.aw.fire) {
-    put_flit_dst := GetDestFromAXI4ChannelA(io.axi.aw.bits)
+    put_packet_dst := GetDestFromAXI4ChannelA(io.axi.aw.bits)
   }.elsewhen(io.axi.ar.fire) {
-    put_flit_dst := GetDestFromAXI4ChannelA(io.axi.ar.bits)
+    put_packet_dst := GetDestFromAXI4ChannelA(io.axi.ar.bits)
   }.otherwise {
-    put_flit_dst := put_flit_dst_reg
+    put_packet_dst := put_packet_dst_reg
   }
 
-  // Put flit data
-  val put_flit_data = WireInit(0.U(AXI4FlitDataWidth().W))
+  // Put packet data
+  val put_packet_data = WireInit(0.U(AXI4PacketDataWidth().W))
   when(io.axi.aw.fire) {
-    put_flit_data := AXI4ChannelA2FlitData(io.axi.aw.bits, true.B)
+    put_packet_data := AXI4ChannelA2PacketData(io.axi.aw.bits, true.B)
   }.elsewhen(io.axi.w.fire) {
-    put_flit_data := AXI4ChannelW2FlitData(io.axi.w.bits)
+    put_packet_data := AXI4ChannelW2PacketData(io.axi.w.bits)
   }.elsewhen(io.axi.ar.fire) {
-    put_flit_data := AXI4ChannelA2FlitData(io.axi.ar.bits, false.B)
+    put_packet_data := AXI4ChannelA2PacketData(io.axi.ar.bits, false.B)
   }
 
-  // Get flit register
-  val get_flit = RegInit(0.U(AXI4FlitWidth().W))
-  when(io.get_flit.fire) {
-    get_flit := io.get_flit.bits
+  // Get packet register
+  val get_packet = RegInit(0.U(AXI4PacketWidth().W))
+  when(io.get_packet.fire) {
+    get_packet := io.get_packet.bits
   }
 
   // AXI4 output signals
-  io.axi.aw.ready := (state === s_idle) && io.put_flit.ready
-  io.axi.w.ready  := (state === s_wdata) && io.put_flit.ready
-  io.axi.b.bits   := Flit2AXI4ChannelB(get_flit)
+  io.axi.aw.ready := (state === s_idle) && io.put_packet.ready
+  io.axi.w.ready  := (state === s_wdata) && io.put_packet.ready
+  io.axi.b.bits   := Packet2AXI4ChannelB(get_packet)
   io.axi.b.valid  := (state === s_wresp2)
-  io.axi.ar.ready := (state === s_idle) && io.put_flit.ready
-  io.axi.r.bits   := Flit2AXI4ChannelR(get_flit)
+  io.axi.ar.ready := (state === s_idle) && io.put_packet.ready
+  io.axi.r.bits   := Packet2AXI4ChannelR(get_packet)
   io.axi.r.valid  := (state === s_rdata2)
 
   // InPort output signals, use VC 1
-  io.put_flit.bits := AssembleFlit(
-    put_flit_data,
+  io.put_packet.bits := AssemblePacket(
+    put_packet_data,
     ID.U(SRC_BITS.W),
     1.U(VC_BITS.W),
-    put_flit_dst,
+    put_packet_dst,
     true.B,
-    io.put_flit.valid
+    io.put_packet.valid
   )
-  io.put_flit.valid := io.axi.aw.fire || io.axi.w.fire || io.axi.ar.fire
+  io.put_packet.valid := io.axi.aw.fire || io.axi.w.fire || io.axi.ar.fire
 
   // OutPort output signals
-  io.get_flit.ready := (state === s_wresp1) || (state === s_rdata1)
+  io.get_packet.ready := (state === s_wresp1) || (state === s_rdata1)
 
   // Debug
   if (DEBUG_AXI4_BRIDGE) {
-    when(io.put_flit.fire) {
-      printf("%d: [AXI4 Bridge  %d] put_flit=%b\n", DebugTimer(), ID.U, io.put_flit.bits)
+    when(io.put_packet.fire) {
+      printf("%d: [AXI4 Bridge  %d] put_packet=%b\n", DebugTimer(), ID.U, io.put_packet.bits)
     }
-    when(io.get_flit.fire) {
-      printf("%d: [AXI4 Bridge  %d] get_flit=%b\n", DebugTimer(), ID.U, io.get_flit.bits)
+    when(io.get_packet.fire) {
+      printf("%d: [AXI4 Bridge  %d] get_packet=%b\n", DebugTimer(), ID.U, io.get_packet.bits)
     }
   }
 }
 
 class AXI4SlaveBridge(val ID: Int) extends Module with Config {
   val io = IO(new Bundle {
-    val axi      = new AXI4IO
-    val put_flit = Decoupled(UInt(AXI4FlitWidth().W))
-    val get_flit = Flipped(Decoupled(UInt(AXI4FlitWidth().W)))
+    val axi        = new AXI4IO
+    val put_packet = Decoupled(UInt(AXI4PacketWidth().W))
+    val get_packet = Flipped(Decoupled(UInt(AXI4PacketWidth().W)))
   })
 
   // State definitions
@@ -134,8 +134,8 @@ class AXI4SlaveBridge(val ID: Int) extends Module with Config {
   val state = RegInit(s_idle)
   switch(state) {
     is(s_idle) {
-      when(io.get_flit.fire) {
-        when(GetIsWFromFlit(io.get_flit.bits)) {
+      when(io.get_packet.fire) {
+        when(GetIsWFromPacket(io.get_packet.bits)) {
           state := s_waddr
         }.otherwise {
           state := s_raddr
@@ -148,7 +148,7 @@ class AXI4SlaveBridge(val ID: Int) extends Module with Config {
       }
     }
     is(s_wdata1) {
-      when(io.get_flit.valid) {
+      when(io.get_packet.valid) {
         state := s_wdata2
       }
     }
@@ -178,51 +178,51 @@ class AXI4SlaveBridge(val ID: Int) extends Module with Config {
     }
   }
 
-  // Put flit data
-  val put_flit_data = WireInit(0.U(AXI4FlitDataWidth().W))
+  // Put packet data
+  val put_packet_data = WireInit(0.U(AXI4PacketDataWidth().W))
   when(io.axi.b.fire) {
-    put_flit_data := AXI4ChannelB2FlitData(io.axi.b.bits)
+    put_packet_data := AXI4ChannelB2PacketData(io.axi.b.bits)
   }.elsewhen(io.axi.r.fire) {
-    put_flit_data := AXI4ChannelR2FlitData(io.axi.r.bits)
+    put_packet_data := AXI4ChannelR2PacketData(io.axi.r.bits)
   }
 
-  // Get flit register
-  val get_flit = RegInit(0.U(AXI4FlitWidth().W))
-  when(io.get_flit.fire) {
-    get_flit := io.get_flit.bits
+  // Get packet register
+  val get_packet = RegInit(0.U(AXI4PacketWidth().W))
+  when(io.get_packet.fire) {
+    get_packet := io.get_packet.bits
   }
 
   // AXI4 output signals
-  io.axi.aw.bits  := Flit2AXI4ChannelA(get_flit)
+  io.axi.aw.bits  := Packet2AXI4ChannelA(get_packet)
   io.axi.aw.valid := (state === s_waddr)
-  io.axi.w.bits   := Flit2AXI4ChannelW(get_flit)
+  io.axi.w.bits   := Packet2AXI4ChannelW(get_packet)
   io.axi.w.valid  := (state === s_wdata2)
-  io.axi.b.ready  := (state === s_wresp) && io.put_flit.ready
-  io.axi.ar.bits  := Flit2AXI4ChannelA(get_flit)
+  io.axi.b.ready  := (state === s_wresp) && io.put_packet.ready
+  io.axi.ar.bits  := Packet2AXI4ChannelA(get_packet)
   io.axi.ar.valid := (state === s_raddr)
-  io.axi.r.ready  := (state === s_rdata) && io.put_flit.ready
+  io.axi.r.ready  := (state === s_rdata) && io.put_packet.ready
 
   // InPort output signals, use VC 0
-  io.put_flit.bits := AssembleFlit(
-    put_flit_data,
+  io.put_packet.bits := AssemblePacket(
+    put_packet_data,
     ID.U(SRC_BITS.W),
     0.U(VC_BITS.W),
-    GetSrcFromFlit(get_flit),
+    GetSrcFromPacket(get_packet),
     true.B,
-    io.put_flit.valid
+    io.put_packet.valid
   )
-  io.put_flit.valid := io.axi.b.fire || io.axi.r.fire
+  io.put_packet.valid := io.axi.b.fire || io.axi.r.fire
 
   // OutPort output signals
-  io.get_flit.ready := (state === s_idle) || (state === s_wdata1)
+  io.get_packet.ready := (state === s_idle) || (state === s_wdata1)
 
   // Debug
   if (DEBUG_AXI4_BRIDGE) {
-    when(io.put_flit.fire) {
-      printf("%d: [AXI4 Bridge  %d] put_flit=%b\n", DebugTimer(), ID.U, io.put_flit.bits)
+    when(io.put_packet.fire) {
+      printf("%d: [AXI4 Bridge  %d] put_packet=%b\n", DebugTimer(), ID.U, io.put_packet.bits)
     }
-    when(io.get_flit.fire) {
-      printf("%d: [AXI4 Bridge  %d] get_flit=%b\n", DebugTimer(), ID.U, io.get_flit.bits)
+    when(io.get_packet.fire) {
+      printf("%d: [AXI4 Bridge  %d] get_packet=%b\n", DebugTimer(), ID.U, io.get_packet.bits)
     }
   }
 }
