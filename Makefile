@@ -20,6 +20,7 @@ $(ARTIFACT): $(CHISEL_SRC)
 	sbt "run -td $(BUILD_DIR)"
 
 test: $(CHISEL_SRC)
+	@-rm -rf $(TEST_DIR)
 	sbt test
 
 clean:

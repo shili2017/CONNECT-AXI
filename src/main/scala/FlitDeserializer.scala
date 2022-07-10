@@ -28,7 +28,7 @@ class FlitDeserializer(val ID: Int, val IN_FLIT_WIDTH: Int, val OUT_PACKET_WIDTH
   val in_flit_valid_vec    = Wire(Vec(NUM_USER_SEND_PORTS, Bool()))
   val in_flit_ready_vec    = Wire(Vec(NUM_USER_SEND_PORTS, Bool()))
   val out_packet_valid_vec = Wire(Vec(NUM_USER_SEND_PORTS, Bool()))
-  val out_packet_ready_vec = WireInit(VecInit(Seq.fill(NUM_USER_SEND_PORTS)(false.B)))
+  val out_packet_ready_vec = WireDefault(VecInit(Seq.fill(NUM_USER_SEND_PORTS)(false.B)))
   for (i <- 0 until NUM_USER_SEND_PORTS) {
     in_flit_valid_vec(i)    := io.in_flit.valid && (in_flit_src === i.U)
     in_flit_ready_vec(i)    := (state(i) === s_recv)
@@ -73,7 +73,7 @@ class FlitDeserializer(val ID: Int, val IN_FLIT_WIDTH: Int, val OUT_PACKET_WIDTH
   io.in_flit.ready := in_flit_ready_vec(in_flit_src)
 
   // Priority encoder to decide which flit to out
-  val out_packet_idx = WireInit(0.U(SRC_BITS.W))
+  val out_packet_idx = WireDefault(0.U(SRC_BITS.W))
   for (i <- 0 until NUM_USER_SEND_PORTS) {
     when(out_packet_valid_vec(i)) {
       out_packet_idx := i.U(SRC_BITS.W)

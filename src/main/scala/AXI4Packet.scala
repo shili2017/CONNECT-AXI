@@ -3,6 +3,14 @@ package connect_axi
 import chisel3._
 import chisel3.util._
 
+object AXI4ChannelID {
+  val AW = 0.U(3.W)
+  val W  = 1.U(3.W)
+  val B  = 2.U(3.W)
+  val AR = 3.U(3.W)
+  val R  = 4.U(3.W)
+}
+
 object AXI4PacketDataWidth {
   def apply(): Int = List(
     (new AXI4IO).aw.bits.getWidth,
@@ -28,10 +36,10 @@ object GetDestFromAXI4ChannelA extends Config {
   def apply(a: AXI4ChannelA): UInt = a.addr(DEST_BITS - 1, 0)
 }
 
-object GetIsWFromPacket {
-  def apply(packet: UInt): Bool = {
+object GetChannelIDFromPacket {
+  def apply(packet: UInt): UInt = {
     assert(packet.getWidth == AXI4PacketWidth())
-    packet(0).asBool
+    packet(2, 0)
   }
 }
 
@@ -54,7 +62,7 @@ object AXI4ChannelA2PacketData {
     a.burst,
     a.size,
     a.len,
-    is_w.asUInt
+    Mux(is_w, AXI4ChannelID.AW, AXI4ChannelID.AR)
   )
 }
 
@@ -62,14 +70,16 @@ object AXI4ChannelW2PacketData {
   def apply(w: AXI4ChannelW): UInt = Cat(
     w.strb,
     w.data,
-    w.last.asUInt
+    w.last.asUInt,
+    AXI4ChannelID.W
   )
 }
 
 object AXI4ChannelB2PacketData {
   def apply(b: AXI4ChannelB): UInt = Cat(
     b.id,
-    b.resp
+    b.resp,
+    AXI4ChannelID.B
   )
 }
 
@@ -78,7 +88,8 @@ object AXI4ChannelR2PacketData {
     r.id,
     r.data,
     r.last.asUInt,
-    r.resp
+    r.resp,
+    AXI4ChannelID.R
   )
 }
 
@@ -86,16 +97,19 @@ object Packet2AXI4ChannelA {
   def apply(packet: UInt): AXI4ChannelA = {
     assert(packet.getWidth == AXI4PacketWidth())
     val a = Wire(new AXI4ChannelA)
-    a.id     := packet(28 + AXI4Parameters.AXI4AddrWidth + AXI4Parameters.AXI4IdWidth, 29 + AXI4Parameters.AXI4AddrWidth)
-    a.addr   := packet(28 + AXI4Parameters.AXI4AddrWidth, 29)
-    a.region := packet(28, 25)
-    a.qos    := packet(24, 21)
-    a.prot   := packet(20, 18)
-    a.cache  := packet(17, 14)
-    a.lock   := packet(13).asBool
-    a.burst  := packet(12, 11)
-    a.size   := packet(10, 8)
-    a.len    := packet(7, 0)
+    a.id := packet(
+      31 + AXI4Parameters.AXI4AddrWidth + AXI4Parameters.AXI4IdWidth,
+      32 + AXI4Parameters.AXI4AddrWidth
+    )
+    a.addr   := packet(31 + AXI4Parameters.AXI4AddrWidth, 32)
+    a.region := packet(31, 28)
+    a.qos    := packet(27, 24)
+    a.prot   := packet(23, 21)
+    a.cache  := packet(20, 17)
+    a.lock   := packet(16).asBool
+    a.burst  := packet(15, 14)
+    a.size   := packet(13, 11)
+    a.len    := packet(10, 3)
     a
   }
 }
@@ -104,9 +118,12 @@ object Packet2AXI4ChannelW {
   def apply(packet: UInt): AXI4ChannelW = {
     assert(packet.getWidth == AXI4PacketWidth())
     val w = Wire(new AXI4ChannelW)
-    w.strb := packet(AXI4Parameters.AXI4DataWidth + AXI4Parameters.AXI4DataWidth / 8, 1 + AXI4Parameters.AXI4DataWidth)
-    w.data := packet(AXI4Parameters.AXI4DataWidth, 1)
-    w.last := packet(0).asBool
+    w.strb := packet(
+      3 + AXI4Parameters.AXI4DataWidth + AXI4Parameters.AXI4DataWidth / 8,
+      4 + AXI4Parameters.AXI4DataWidth
+    )
+    w.data := packet(3 + AXI4Parameters.AXI4DataWidth, 4)
+    w.last := packet(3).asBool
     w
   }
 }
@@ -115,8 +132,8 @@ object Packet2AXI4ChannelB {
   def apply(packet: UInt): AXI4ChannelB = {
     assert(packet.getWidth == AXI4PacketWidth())
     val b = Wire(new AXI4ChannelB)
-    b.id   := packet(1 + AXI4Parameters.AXI4IdWidth, 2)
-    b.resp := packet(1, 0)
+    b.id   := packet(4 + AXI4Parameters.AXI4IdWidth, 5)
+    b.resp := packet(4, 3)
     b
   }
 }
@@ -125,21 +142,13 @@ object Packet2AXI4ChannelR {
   def apply(packet: UInt): AXI4ChannelR = {
     assert(packet.getWidth == AXI4PacketWidth())
     val r = Wire(new AXI4ChannelR)
-    r.id   := packet(2 + AXI4Parameters.AXI4DataWidth + AXI4Parameters.AXI4IdWidth, 3 + AXI4Parameters.AXI4DataWidth)
-    r.data := packet(2 + AXI4Parameters.AXI4DataWidth, 3)
-    r.last := packet(2).asBool
-    r.resp := packet(1, 0)
+    r.id := packet(
+      5 + AXI4Parameters.AXI4DataWidth + AXI4Parameters.AXI4IdWidth,
+      6 + AXI4Parameters.AXI4DataWidth
+    )
+    r.data := packet(5 + AXI4Parameters.AXI4DataWidth, 6)
+    r.last := packet(5).asBool
+    r.resp := packet(4, 3)
     r
   }
-}
-
-object AssemblePacket {
-  def apply(data: UInt, src: UInt, vc: UInt, dst: UInt, tail: Bool, valid: Bool): UInt = Cat(
-    valid.asUInt,
-    tail.asUInt,
-    dst,
-    vc,
-    src,
-    data
-  )
 }
