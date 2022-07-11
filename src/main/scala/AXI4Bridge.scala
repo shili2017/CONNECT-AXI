@@ -29,6 +29,21 @@ class AXI4MasterBridge(val ID: Int) extends Module with Config {
 
   // Debug
   if (DEBUG_AXI4_BRIDGE) {
+    when(io.axi.aw.fire) {
+      printf("%d: [AXI4 Bridge-M%d] aw addr=%b\n", DebugTimer(), ID.U, io.axi.aw.bits.addr)
+    }
+    when(io.axi.w.fire) {
+      printf("%d: [AXI4 Bridge-M%d] w  data=%b last=%b\n", DebugTimer(), ID.U, io.axi.w.bits.data, io.axi.w.bits.last)
+    }
+    when(io.axi.b.fire) {
+      printf("%d: [AXI4 Bridge-M%d] b\n", DebugTimer(), ID.U)
+    }
+    when(io.axi.ar.fire) {
+      printf("%d: [AXI4 Bridge-M%d] ar addr=%b\n", DebugTimer(), ID.U, io.axi.ar.bits.addr)
+    }
+    when(io.axi.r.fire) {
+      printf("%d: [AXI4 Bridge-M%d] r  data=%b last=%b\n", DebugTimer(), ID.U, io.axi.r.bits.data, io.axi.r.bits.last)
+    }
     when(io.a_packet.fire) {
       printf("%d: [AXI4 Bridge-M%d] a_packet =%b\n", DebugTimer(), ID.U, io.a_packet.bits)
     }
@@ -104,7 +119,7 @@ class AXI4MasterBridgeStage1(val ID: Int) extends Module with Config {
 
   // Channel AW packet
   io.aw_packet.bits := Assemble(
-    AXI4ChannelA2PacketData(io.axi.aw.bits, true.B),
+    AXI4ChannelA2PacketData(io.axi.aw.bits, true.B).asTypeOf(UInt(AXI4PacketDataWidth().W)),
     ID.U(SRC_BITS.W),
     2.U(VC_BITS.W),
     GetDestFromAXI4ChannelA(io.axi.aw.bits),
@@ -116,7 +131,7 @@ class AXI4MasterBridgeStage1(val ID: Int) extends Module with Config {
 
   // Channel AR packet
   io.ar_packet.bits := Assemble(
-    AXI4ChannelA2PacketData(io.axi.ar.bits, false.B),
+    AXI4ChannelA2PacketData(io.axi.ar.bits, false.B).asTypeOf(UInt(AXI4PacketDataWidth().W)),
     ID.U(SRC_BITS.W),
     2.U(VC_BITS.W),
     GetDestFromAXI4ChannelA(io.axi.ar.bits),
@@ -128,14 +143,14 @@ class AXI4MasterBridgeStage1(val ID: Int) extends Module with Config {
 
   // Channel W packet
   io.w_packet.bits := Assemble(
-    AXI4ChannelW2PacketData(io.axi.w.bits),
+    AXI4ChannelW2PacketData(io.axi.w.bits).asTypeOf(UInt(AXI4PacketDataWidth().W)),
     ID.U(SRC_BITS.W),
     1.U(VC_BITS.W),
     w_packet_dst,
     true.B,
     io.w_packet.valid
   )
-  io.w_packet.valid := io.axi.aw.valid && (r_state === w_data)
+  io.w_packet.valid := io.axi.w.valid && (w_state === w_data)
   io.axi.w.ready    := io.w_packet.ready && (w_state === w_data)
 
   // Channel B packet
@@ -207,6 +222,21 @@ class AXI4SlaveBridge(val ID: Int) extends Module with Config {
 
   // Debug
   if (DEBUG_AXI4_BRIDGE) {
+    when(io.axi.aw.fire) {
+      printf("%d: [AXI4 Bridge-S%d] aw addr=%b\n", DebugTimer(), ID.U, io.axi.aw.bits.addr)
+    }
+    when(io.axi.w.fire) {
+      printf("%d: [AXI4 Bridge-S%d] w  data=%b last=%b\n", DebugTimer(), ID.U, io.axi.w.bits.data, io.axi.w.bits.last)
+    }
+    when(io.axi.b.fire) {
+      printf("%d: [AXI4 Bridge-S%d] b\n", DebugTimer(), ID.U)
+    }
+    when(io.axi.ar.fire) {
+      printf("%d: [AXI4 Bridge-S%d] ar addr=%b\n", DebugTimer(), ID.U, io.axi.ar.bits.addr)
+    }
+    when(io.axi.r.fire) {
+      printf("%d: [AXI4 Bridge-S%d] r  data=%b last=%b\n", DebugTimer(), ID.U, io.axi.r.bits.data, io.axi.r.bits.last)
+    }
     when(io.a_packet.fire) {
       printf("%d: [AXI4 Bridge-S%d] a_packet =%b\n", DebugTimer(), ID.U, io.a_packet.bits)
     }
@@ -304,7 +334,7 @@ class AXI4SlaveBridgeStage1(val ID: Int) extends Module with Config {
 
   // Channel B packet
   io.b_packet.bits := Assemble(
-    AXI4ChannelB2PacketData(io.axi.b.bits),
+    AXI4ChannelB2PacketData(io.axi.b.bits).asTypeOf(UInt(AXI4PacketDataWidth().W)),
     ID.U(SRC_BITS.W),
     0.U(VC_BITS.W),
     b_packet_dst,
@@ -316,7 +346,7 @@ class AXI4SlaveBridgeStage1(val ID: Int) extends Module with Config {
 
   // Channel R packet
   io.r_packet.bits := Assemble(
-    AXI4ChannelR2PacketData(io.axi.r.bits),
+    AXI4ChannelR2PacketData(io.axi.r.bits).asTypeOf(UInt(AXI4PacketDataWidth().W)),
     ID.U(SRC_BITS.W),
     0.U(VC_BITS.W),
     r_packet_dst,
@@ -344,10 +374,14 @@ class AXI4SlaveBridgeStage2 extends Module with Config {
   // Address channel (aw/ar)
   io.in_aw_packet.bits  := io.out_a_packet.bits
   io.in_aw_packet.valid := io.out_a_packet.valid && (GetChannelIDFromPacket(io.out_a_packet.bits) === AXI4ChannelID.AW)
-  io.out_a_packet.ready := io.in_aw_packet.ready && (GetChannelIDFromPacket(io.out_a_packet.bits) === AXI4ChannelID.AW)
   io.in_ar_packet.bits  := io.out_a_packet.bits
   io.in_ar_packet.valid := io.out_a_packet.valid && (GetChannelIDFromPacket(io.out_a_packet.bits) === AXI4ChannelID.AR)
-  io.out_a_packet.ready := io.in_ar_packet.ready && (GetChannelIDFromPacket(io.out_a_packet.bits) === AXI4ChannelID.AR)
+  io.out_a_packet.ready := false.B
+  when(GetChannelIDFromPacket(io.out_a_packet.bits) === AXI4ChannelID.AW) {
+    io.out_a_packet.ready := io.in_aw_packet.ready
+  }.elsewhen(GetChannelIDFromPacket(io.out_a_packet.bits) === AXI4ChannelID.AR) {
+    io.out_a_packet.ready := io.in_ar_packet.ready
+  }
 
   // Write channel
   io.in_w_packet <> io.out_w_packet
