@@ -23,10 +23,11 @@ trait Config {
   val FLIT_WIDTH      = FLIT_DATA_WIDTH + SRC_BITS + DEST_BITS + VC_BITS + 2
 
   // Debug messages
-  val DEBUG_AXI4_BRIDGE  = false
-  val DEBUG_SERIALIZER   = false
-  val DEBUG_DESERIALIZER = false
-  val DEBUG_NETWORK      = true
+  val DEBUG_AXI4_BRIDGE    = false
+  val DEBUG_SERIALIZER     = false
+  val DEBUG_DESERIALIZER   = false
+  val DEBUG_NETWORK_FLIT   = false
+  val DEBUG_NETWORK_CREDIT = false
 }
 
 object Config extends Config {}

@@ -3,16 +3,15 @@ package connect_axi
 import chisel3._
 import chisel3.util._
 
-class AXI4MasterDevice(val ID: Int, val DEST: Int) extends Module {
-  val LEN  = 8
-  val DATA = "hdeadbeefdeadbeef".U
-
+class AXI4MasterDevice(val ID: Int, val DEST: Int, val LEN: Int) extends Module {
   val io = IO(new Bundle {
     val axi         = new AXI4IO
     val start_read  = Input(Bool())
     val start_write = Input(Bool())
     val buffer_peek = Vec(LEN, Output(UInt(AXI4Parameters.AXI4DataWidth.W)))
   })
+
+  val DATA = "hdeadbeefdeadbeef".U
 
   val wlen   = RegInit(0.U(8.W))
   val rlen   = RegInit(0.U(8.W))
@@ -92,9 +91,7 @@ class AXI4MasterDevice(val ID: Int, val DEST: Int) extends Module {
   io.axi.r.ready       := (state === s_rdata)
 }
 
-class AXI4SlaveDevice(val ID: Int) extends Module {
-  val LEN = 8
-
+class AXI4SlaveDevice(val ID: Int, val LEN: Int) extends Module {
   val io = IO(new Bundle {
     val axi         = Flipped(new AXI4IO)
     val buffer_peek = Vec(LEN, Output(UInt(AXI4Parameters.AXI4DataWidth.W)))
@@ -175,9 +172,7 @@ class AXI4SlaveDevice(val ID: Int) extends Module {
   io.axi.r.valid     := (state === s_rdata)
 }
 
-class AXI4Testbench extends Module with Config {
-  val LEN = 8
-
+class AXI4Testbench(LEN: Int) extends Module with Config {
   val io = IO(new Bundle {
     val start_write        = Vec(NUM_MASTER_DEVICES, Input(Bool()))
     val start_read         = Vec(NUM_MASTER_DEVICES, Input(Bool()))
@@ -188,7 +183,7 @@ class AXI4Testbench extends Module with Config {
   val dut = Module(new NetworkAXI4Wrapper)
 
   val master = for (i <- 0 until NUM_MASTER_DEVICES) yield {
-    val device = Module(new AXI4MasterDevice(i, i + NUM_MASTER_DEVICES))
+    val device = Module(new AXI4MasterDevice(i, i + NUM_MASTER_DEVICES, LEN))
     device
   }
   for (i <- 0 until NUM_MASTER_DEVICES) {
@@ -199,7 +194,7 @@ class AXI4Testbench extends Module with Config {
   }
 
   val slave = for (i <- 0 until NUM_SLAVE_DEVICES) yield {
-    val device = Module(new AXI4SlaveDevice(i + NUM_MASTER_DEVICES))
+    val device = Module(new AXI4SlaveDevice(i + NUM_MASTER_DEVICES, LEN))
     device
   }
   for (i <- 0 until NUM_SLAVE_DEVICES) {

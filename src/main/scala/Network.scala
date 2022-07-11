@@ -76,15 +76,28 @@ class Network extends Module with Config {
 
   val recv_ports_info_getRecvPortID = Wire(Vec(NUM_USER_RECV_PORTS, UInt(DEST_BITS.W)))
 
-  if (DEBUG_NETWORK) {
+  if (DEBUG_NETWORK_FLIT) {
     for (i <- 0 until NUM_USER_SEND_PORTS) {
       when(io.send(i).put_flit(FLIT_WIDTH - 1)) {
-        printf("%d: [Network      %d] put_flit=%b\n", DebugTimer(), i.U, io.send(i).put_flit)
+        printf("%d: [Network send %d] put_flit=%b\n", DebugTimer(), i.U, io.send(i).put_flit)
       }
     }
     for (i <- 0 until NUM_USER_RECV_PORTS) {
       when(io.recv(i).get_flit(FLIT_WIDTH - 1)) {
-        printf("%d: [Network      %d] get_flit=%b\n", DebugTimer(), i.U, io.recv(i).get_flit)
+        printf("%d: [Network recv %d] get_flit=%b\n", DebugTimer(), i.U, io.recv(i).get_flit)
+      }
+    }
+  }
+
+  if (DEBUG_NETWORK_CREDIT) {
+    for (i <- 0 until NUM_USER_SEND_PORTS) {
+      when(io.send(i).get_credit(VC_BITS)) {
+        printf("%d: [Network send %d] get_credit=%b\n", DebugTimer(), i.U, io.send(i).get_credit)
+      }
+    }
+    for (i <- 0 until NUM_USER_RECV_PORTS) {
+      when(io.recv(i).put_credit(VC_BITS)) {
+        printf("%d: [Network recv %d] put_credit=%b\n", DebugTimer(), i.U, io.recv(i).put_credit)
       }
     }
   }

@@ -57,7 +57,7 @@ class InPortFIFO(VC: Int) extends Module with Config {
 
   // Flit output
   fifo.io.deq.ready     := io.network_flit.ready && (credit_counter =/= 0.U)
-  io.network_flit.valid := fifo.io.deq.valid
+  io.network_flit.valid := fifo.io.deq.valid && (credit_counter =/= 0.U)
   io.network_flit.bits  := fifo.io.deq.bits
 }
 
