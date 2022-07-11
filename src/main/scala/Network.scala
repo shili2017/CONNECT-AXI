@@ -1,8 +1,7 @@
 package connect_axi
 
 import chisel3._
-import chisel3.withClockAndReset
-import chisel3.util.HasBlackBoxResource
+import chisel3.util._
 
 class mkNetwork extends BlackBox with HasBlackBoxResource with Config {
   val io = IO(new Bundle {

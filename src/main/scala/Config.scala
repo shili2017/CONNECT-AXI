@@ -28,6 +28,10 @@ trait Config {
   val DEBUG_DESERIALIZER   = false
   val DEBUG_NETWORK_FLIT   = false
   val DEBUG_NETWORK_CREDIT = false
+
+  // Library
+  val USE_FIFO_IP = true
+  val ALTERA_MF_V = "/afs/ece.cmu.edu/support/altera/release/pro-19.3.0.222/quartus/eda/sim_lib/altera_mf.v"
 }
 
 object Config extends Config {}

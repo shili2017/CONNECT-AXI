@@ -18,15 +18,43 @@ class BasicFIFO(
     val almost_empty = Output(Bool())
   })
 
-  val fifo = Module(new Queue(UInt(DATA_WIDTH.W), DEPTH, true, true))
+  if (Config.USE_FIFO_IP) {
+    val fifo = Module(
+      new scfifo(
+        lpm_width          = DATA_WIDTH,
+        lpm_widthu         = log2Up(DEPTH),
+        lpm_numwords       = DEPTH,
+        lpm_showahead      = "ON",
+        almost_full_value  = ALMOST_FULL_VALUE,
+        almost_empty_value = ALMOST_EMPTY_VALUE
+      )
+    )
 
-  fifo.io.enq <> io.enq
-  fifo.io.deq <> io.deq
+    fifo.io.clock   := clock
+    fifo.io.sclr    := reset
+    fifo.io.aclr    := reset
+    fifo.io.data    := io.enq.bits
+    fifo.io.wrreq   := io.enq.valid
+    io.full         := fifo.io.full
+    io.almost_full  := fifo.io.almost_full
+    io.deq.bits     := fifo.io.q
+    fifo.io.rdreq   := io.deq.ready
+    io.empty        := fifo.io.empty
+    io.almost_empty := fifo.io.almost_empty
 
-  io.full         := (fifo.io.count === DEPTH.U)
-  io.almost_full  := (fifo.io.count >= ALMOST_FULL_VALUE.U)
-  io.empty        := (fifo.io.count === 0.U)
-  io.almost_empty := (fifo.io.count <= ALMOST_EMPTY_VALUE.U)
+    io.enq.ready := !fifo.io.full
+    io.deq.valid := !fifo.io.empty
+  } else {
+    val fifo = Module(new Queue(UInt(DATA_WIDTH.W), DEPTH, true, true))
+
+    fifo.io.enq <> io.enq
+    fifo.io.deq <> io.deq
+
+    io.full         := (fifo.io.count === DEPTH.U)
+    io.almost_full  := (fifo.io.count >= ALMOST_FULL_VALUE.U)
+    io.empty        := (fifo.io.count === 0.U)
+    io.almost_empty := (fifo.io.count <= ALMOST_EMPTY_VALUE.U)
+  }
 }
 
 class InPortFIFO(VC: Int) extends Module with Config {
