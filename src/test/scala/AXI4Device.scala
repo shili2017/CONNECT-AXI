@@ -180,7 +180,7 @@ class AXI4Testbench(LEN: Int) extends Module with Config {
     val slave_buffer_peek  = Vec(NUM_SLAVE_DEVICES, Vec(LEN, Output(UInt(AXI4Parameters.AXI4DataWidth.W))))
   })
 
-  val dut = Module(new NetworkAXI4Wrapper)
+  val dut = Module(new NetworkAXI4Wrapper("AXI4"))
 
   val master = for (i <- 0 until NUM_MASTER_DEVICES) yield {
     val device = Module(new AXI4MasterDevice(i, i + NUM_MASTER_DEVICES, LEN))

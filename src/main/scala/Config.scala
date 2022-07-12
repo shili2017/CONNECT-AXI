@@ -11,7 +11,7 @@ trait Config {
   val FLIT_BUFFER_DEPTH    = 4
 
   // CONNECT AXI wrapper parameters
-  val PROTOCOL           = "AXI4"
+  val PROTOCOL           = "AXI4" // should be in ["AXI4", "AXI4-Lite"]
   val NUM_MASTER_DEVICES = 2
   val NUM_SLAVE_DEVICES  = 2
 
@@ -30,7 +30,7 @@ trait Config {
   val DEBUG_NETWORK_CREDIT = false
 
   // Library
-  val USE_FIFO_IP = true
+  val USE_FIFO_IP = false
   val ALTERA_MF_V = "/afs/ece.cmu.edu/support/altera/release/pro-19.3.0.222/quartus/eda/sim_lib/altera_mf.v"
 }
 

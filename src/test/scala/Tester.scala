@@ -8,7 +8,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 class NetworkAXI4WrapperTester extends AnyFlatSpec with ChiselScalatestTester {
   behavior.of("NetworkAXI4WrapperTester")
 
-  it should "test" in {
+  it should "pass AXI4 test" in {
     val annotation = Seq(
       VerilatorBackendAnnotation,
       WriteVcdAnnotation
@@ -36,6 +36,33 @@ class NetworkAXI4WrapperTester extends AnyFlatSpec with ChiselScalatestTester {
         tb.io.master_buffer_peek(1)(i).expect(i.U)
         tb.io.slave_buffer_peek(0)(i).expect((BigInt("deadbeefdeadbeef", 16) + i).U)
       }
+    }
+  }
+
+  it should "pass AXI4-Lite test" in {
+    val annotation = Seq(
+      VerilatorBackendAnnotation,
+      WriteVcdAnnotation
+    )
+
+    test(new AXI4LiteTestbench).withAnnotations(annotation) { tb =>
+      tb.clock.step()
+
+      tb.io.start_write(0).poke(false)
+      tb.io.start_write(1).poke(false)
+      tb.io.start_read(0).poke(false)
+      tb.io.start_read(1).poke(false)
+      tb.clock.step()
+      tb.io.start_write(0).poke(true)
+      tb.clock.step()
+      tb.io.start_write(0).poke(false)
+      tb.io.start_read(1).poke(true)
+      tb.clock.step()
+      tb.io.start_read(1).poke(false)
+      tb.clock.step(200)
+
+      tb.io.master_buffer_peek(1).expect(BigInt("1234567812345678", 16).U)
+      tb.io.slave_buffer_peek(0).expect(BigInt("deadbeefdeadbeef", 16).U)
     }
   }
 }
