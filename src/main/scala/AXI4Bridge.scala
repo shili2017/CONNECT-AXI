@@ -125,12 +125,12 @@ class AXI4MasterBridgeStage1[B <: AXI4LiteIO](bus_io: B)(val ID: Int) extends Mo
   // Write packet destination
   val w_packet_dst = RegEnable(
     GetDestFromAXI4ChannelA(io.axi.aw.bits),
-    0.U.asTypeOf(UInt(DEST_BITS.W)),
+    0.U(DEST_BITS.W),
     io.axi.aw.fire
   )
 
   // Channel AW packet
-  io.aw_packet.bits := Assemble(
+  io.aw_packet.bits := Assemble(AXI4PacketDataWidth(bus_io))(
     AXI4ChannelA2PacketData(io.axi.aw.bits, true.B).asTypeOf(UInt(AXI4PacketDataWidth(bus_io).W)),
     ID.U(SRC_BITS.W),
     2.U(VC_BITS.W),
@@ -142,7 +142,7 @@ class AXI4MasterBridgeStage1[B <: AXI4LiteIO](bus_io: B)(val ID: Int) extends Mo
   io.axi.aw.ready    := io.aw_packet.ready && (w_state === w_addr)
 
   // Channel AR packet
-  io.ar_packet.bits := Assemble(
+  io.ar_packet.bits := Assemble(AXI4PacketDataWidth(bus_io))(
     AXI4ChannelA2PacketData(io.axi.ar.bits, false.B).asTypeOf(UInt(AXI4PacketDataWidth(bus_io).W)),
     ID.U(SRC_BITS.W),
     2.U(VC_BITS.W),
@@ -154,7 +154,7 @@ class AXI4MasterBridgeStage1[B <: AXI4LiteIO](bus_io: B)(val ID: Int) extends Mo
   io.axi.ar.ready    := io.ar_packet.ready && (r_state === r_addr)
 
   // Channel W packet
-  io.w_packet.bits := Assemble(
+  io.w_packet.bits := Assemble(AXI4PacketDataWidth(bus_io))(
     AXI4ChannelW2PacketData(io.axi.w.bits).asTypeOf(UInt(AXI4PacketDataWidth(bus_io).W)),
     ID.U(SRC_BITS.W),
     1.U(VC_BITS.W),
@@ -334,14 +334,14 @@ class AXI4SlaveBridgeStage1[B <: AXI4LiteIO](bus_io: B)(val ID: Int) extends Mod
   // Write response packet destination
   val b_packet_dst = RegEnable(
     GetSrcFromPacket(bus_io)(io.aw_packet.bits),
-    0.U.asTypeOf(UInt(DEST_BITS.W)),
+    0.U(DEST_BITS.W),
     io.aw_packet.fire
   )
 
   // Read response packet destination
   val r_packet_dst = RegEnable(
     GetSrcFromPacket(bus_io)(io.ar_packet.bits),
-    0.U.asTypeOf(UInt(DEST_BITS.W)),
+    0.U(DEST_BITS.W),
     io.ar_packet.fire
   )
 
@@ -361,7 +361,7 @@ class AXI4SlaveBridgeStage1[B <: AXI4LiteIO](bus_io: B)(val ID: Int) extends Mod
   io.w_packet.ready := io.axi.w.ready && (w_state === w_data)
 
   // Channel B packet
-  io.b_packet.bits := Assemble(
+  io.b_packet.bits := Assemble(AXI4PacketDataWidth(bus_io))(
     AXI4ChannelB2PacketData(io.axi.b.bits).asTypeOf(UInt(AXI4PacketDataWidth(bus_io).W)),
     ID.U(SRC_BITS.W),
     0.U(VC_BITS.W),
@@ -373,7 +373,7 @@ class AXI4SlaveBridgeStage1[B <: AXI4LiteIO](bus_io: B)(val ID: Int) extends Mod
   io.axi.b.ready    := io.b_packet.ready && (w_state === w_resp)
 
   // Channel R packet
-  io.r_packet.bits := Assemble(
+  io.r_packet.bits := Assemble(AXI4PacketDataWidth(bus_io))(
     AXI4ChannelR2PacketData(io.axi.r.bits).asTypeOf(UInt(AXI4PacketDataWidth(bus_io).W)),
     ID.U(SRC_BITS.W),
     0.U(VC_BITS.W),

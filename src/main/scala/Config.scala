@@ -11,9 +11,10 @@ trait Config {
   val FLIT_BUFFER_DEPTH    = 4
 
   // CONNECT AXI wrapper parameters
-  val PROTOCOL           = "AXI4" // should be in ["AXI4", "AXI4-Lite"]
-  val NUM_MASTER_DEVICES = 2
-  val NUM_SLAVE_DEVICES  = 2
+  val PROTOCOL            = "AXI4" // should be in ["AXI4", "AXI4-Lite", "Simple"]
+  val NUM_MASTER_DEVICES  = 2
+  val NUM_SLAVE_DEVICES   = 2
+  val SIMPLE_PACKET_WIDTH = 80
 
   // Induced parameters
   val FLIT_DATA_WIDTH = REAL_FLIT_DATA_WIDTH - log2Up(NUM_USER_SEND_PORTS)

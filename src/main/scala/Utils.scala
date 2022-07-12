@@ -11,8 +11,17 @@ object DebugTimer {
   }
 }
 
-object ZeroExt32_64 {
-  def apply(x: UInt): UInt = Cat(Fill(32, 0.U), x)
+object ZeroExtend {
+  def apply(x: UInt, width: Int): UInt = {
+    if (x.getWidth > width) {
+      assert(false, "Truncate x in ZeroExtend\n")
+      x(width - 1, 0)
+    } else if (x.getWidth == width) {
+      x
+    } else {
+      Cat(Fill(width - x.getWidth, 0.U), x)
+    }
+  }
 }
 
 object HoldUnless {
@@ -22,14 +31,19 @@ object HoldUnless {
 }
 
 object Assemble {
-  def apply(data: UInt, src: UInt, vc: UInt, dst: UInt, tail: Bool, valid: Bool): UInt = Cat(
-    valid.asUInt,
-    tail.asUInt,
-    dst,
-    vc,
-    src,
-    data
-  )
+  def apply(data_width: Int)(data: UInt, src: UInt, vc: UInt, dst: UInt, tail: Bool, valid: Bool): UInt = {
+    assert(src.getWidth == Config.SRC_BITS)
+    assert(vc.getWidth == Config.VC_BITS)
+    assert(dst.getWidth == Config.DEST_BITS)
+    Cat(
+      valid.asUInt,
+      tail.asUInt,
+      dst,
+      vc,
+      src,
+      ZeroExtend(data, data_width)
+    )
+  }
 }
 
 object GetVC {
