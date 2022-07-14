@@ -18,79 +18,98 @@ class BasicFIFO(
     val almost_empty = Output(Bool())
   })
 
-  val fifo = Module(new Queue(UInt(DATA_WIDTH.W), DEPTH, true, true))
+  if (Config.USE_FIFO_IP) {
+    val fifo = Module(
+      new scfifo(
+        lpm_width          = DATA_WIDTH,
+        lpm_widthu         = log2Up(DEPTH),
+        lpm_numwords       = DEPTH,
+        lpm_showahead      = "ON",
+        almost_full_value  = ALMOST_FULL_VALUE,
+        almost_empty_value = ALMOST_EMPTY_VALUE
+      )
+    )
 
-  fifo.io.enq <> io.enq
-  fifo.io.deq <> io.deq
+    fifo.io.clock   := clock
+    fifo.io.sclr    := reset
+    fifo.io.aclr    := reset
+    fifo.io.data    := io.enq.bits
+    fifo.io.wrreq   := io.enq.valid
+    io.full         := fifo.io.full
+    io.almost_full  := fifo.io.almost_full
+    io.deq.bits     := fifo.io.q
+    fifo.io.rdreq   := io.deq.ready
+    io.empty        := fifo.io.empty
+    io.almost_empty := fifo.io.almost_empty
 
-  io.full         := (fifo.io.count === DEPTH.U)
-  io.almost_full  := (fifo.io.count >= ALMOST_FULL_VALUE.U)
-  io.empty        := (fifo.io.count === 0.U)
-  io.almost_empty := (fifo.io.count <= ALMOST_EMPTY_VALUE.U)
+    io.enq.ready := !fifo.io.full
+    io.deq.valid := !fifo.io.empty
+  } else {
+    val fifo = Module(new Queue(UInt(DATA_WIDTH.W), DEPTH, true, true))
+
+    fifo.io.enq <> io.enq
+    fifo.io.deq <> io.deq
+
+    io.full         := (fifo.io.count === DEPTH.U)
+    io.almost_full  := (fifo.io.count >= ALMOST_FULL_VALUE.U)
+    io.empty        := (fifo.io.count === 0.U)
+    io.almost_empty := (fifo.io.count <= ALMOST_EMPTY_VALUE.U)
+  }
 }
 
-class InPortFIFO(val DEVICE_TYPE: String = "SYMMETRIC") extends Module with Config {
+class InPortFIFO(VC: Int) extends Module with Config {
   val io = IO(new Bundle {
-    val put_flit = Flipped(Decoupled(UInt(FLIT_WIDTH.W))) // Input from device
-    val send     = Flipped(new NetworkSendInterface) // Output to network
+    // Device
+    val device_flit = Flipped(Decoupled(UInt(FLIT_WIDTH.W)))
+    // Network
+    val network_flit   = Decoupled(UInt(FLIT_WIDTH.W))
+    val network_credit = Flipped(Decoupled(UInt(VC_BITS.W)))
   })
 
   val fifo = Module(new BasicFIFO(FLIT_BUFFER_DEPTH, FLIT_WIDTH)())
-  fifo.io.enq <> io.put_flit
+  fifo.io.enq <> io.device_flit
 
-  /* device_type can be "MASTER", "SLAVE" or "SYMMETRIC"
-   * MASTER: InPortFIFO sends requests and uses VC 1
-   * SLAVE:  InPortFIFO sends responses and uses VC 0
-   * SYMMETRIC: InPortFIFO uses VC 0
-   */
-  val vc = Wire(UInt(VC_BITS.W))
-  if (DEVICE_TYPE == "MASTER") {
-    vc := 1.U
-  } else {
-    vc := 0.U
+  // Check whether incoming credit matches VC
+  when(io.network_credit.fire) {
+    assert(io.network_credit.bits === VC.U)
   }
 
-  val get_credit_valid = Wire(Bool())
-  get_credit_valid := io.send.get_credit(VC_BITS) && (io.send.get_credit(VC_BITS - 1, 0) === vc)
-
+  // Credit
   val credit_counter = RegInit(FLIT_BUFFER_DEPTH.U((log2Up(FLIT_BUFFER_DEPTH) + 1).W))
-  when(fifo.io.deq.fire && !get_credit_valid) {
+  when(fifo.io.deq.fire && !io.network_credit.fire) {
     credit_counter := credit_counter - 1.U
-  }.elsewhen(get_credit_valid && !fifo.io.deq.fire) {
+  }.elsewhen(io.network_credit.fire && !fifo.io.deq.fire) {
     credit_counter := credit_counter + 1.U
   }
+  io.network_credit.ready := true.B
 
-  fifo.io.deq.ready     := (credit_counter =/= 0.U)
-  io.send.put_flit      := Cat(fifo.io.deq.fire.asUInt, fifo.io.deq.bits(FLIT_WIDTH - 2, 0))
-  io.send.EN_put_flit   := fifo.io.deq.fire
-  io.send.EN_get_credit := true.B
+  // Flit output
+  fifo.io.deq.ready     := io.network_flit.ready && (credit_counter =/= 0.U)
+  io.network_flit.valid := fifo.io.deq.valid && (credit_counter =/= 0.U)
+  io.network_flit.bits  := fifo.io.deq.bits
 }
 
-class OutPortFIFO(val DEVICE_TYPE: String = "SYMMETRIC") extends Module with Config {
+class OutPortFIFO(VC: Int) extends Module with Config {
   val io = IO(new Bundle {
-    val get_flit = Decoupled(UInt(FLIT_WIDTH.W)) // Output to device
-    val recv     = Flipped(new NetworkRecvInterface) // Input from network
+    // Device
+    val device_flit = Decoupled(UInt(FLIT_WIDTH.W)) // Output to device
+    // Network
+    val network_flit   = Flipped(Decoupled(UInt(FLIT_WIDTH.W)))
+    val network_credit = Decoupled(UInt(VC_BITS.W))
   })
 
   val fifo = Module(new BasicFIFO(FLIT_BUFFER_DEPTH, FLIT_WIDTH)())
-  fifo.io.deq <> io.get_flit
 
-  /* device_type can be "MASTER", "SLAVE" or "SYMMETRIC"
-   * MASTER: OutPortFIFO receives responses and uses VC 0
-   * SLAVE:  OutPortFIFO receives requests and uses VC 1
-   * SYMMETRIC: OutPortFIFO uses VC 0
-   */
-  val vc = Wire(UInt(VC_BITS.W))
-  if (DEVICE_TYPE == "SLAVE") {
-    vc := 1.U
-  } else {
-    vc := 0.U
-  }
+  // Flit output to device
+  fifo.io.deq          <> io.device_flit
+  io.device_flit.bits  := fifo.io.deq.bits
+  io.device_flit.valid := fifo.io.deq.valid && io.network_credit.ready
+  fifo.io.deq.ready    := io.device_flit.ready && io.network_credit.ready
 
-  fifo.io.enq.bits      := io.recv.get_flit
-  fifo.io.enq.valid     := io.recv.get_flit(FLIT_WIDTH - 1).asBool
-  io.recv.EN_get_flit   := fifo.io.enq.ready
-  io.recv.put_credit    := Cat(io.recv.EN_put_credit, vc)
-  io.recv.EN_put_credit := io.get_flit.fire
+  // Credit
+  io.network_credit.bits  := VC.U(VC_BITS.W)
+  io.network_credit.valid := io.device_flit.fire
 
+  // Flit input from network
+  fifo.io.enq <> io.network_flit
 }
