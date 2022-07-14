@@ -24,9 +24,9 @@ class NetworkAXI4Wrapper(AXI4_PROTOCOL: String = Config.PROTOCOL) extends Module
 
   for (i <- 0 until NUM_MASTER_DEVICES) {
     val bridge            = Module(new AXI4MasterBridge(bus_io)(i))
-    val serializer_a      = Module(new FlitSerializer(i, AXI4PacketWidth(bus_io), FLIT_WIDTH))
-    val serializer_w      = Module(new FlitSerializer(i, AXI4PacketWidth(bus_io), FLIT_WIDTH))
-    val deserializer_br   = Module(new FlitDeserializer(i, FLIT_WIDTH, AXI4PacketWidth(bus_io)))
+    val serializer_a      = Module(new FlitSerializer(i, AXI4PacketWidth(bus_io), FLIT_WIDTH, 2))
+    val serializer_w      = Module(new FlitSerializer(i, AXI4PacketWidth(bus_io), FLIT_WIDTH, 1))
+    val deserializer_br   = Module(new FlitDeserializer(i, FLIT_WIDTH, AXI4PacketWidth(bus_io), 0))
     val flow_control_send = Module(new FlitFlowControlSend)
     val flow_control_recv = Module(new FlitFlowControlRecv)
 
@@ -50,9 +50,9 @@ class NetworkAXI4Wrapper(AXI4_PROTOCOL: String = Config.PROTOCOL) extends Module
 
   for (i <- NUM_MASTER_DEVICES until NUM_MASTER_DEVICES + NUM_SLAVE_DEVICES) {
     val bridge            = Module(new AXI4SlaveBridge(bus_io)(i))
-    val deserializer_a    = Module(new FlitDeserializer(i, FLIT_WIDTH, AXI4PacketWidth(bus_io)))
-    val deserializer_w    = Module(new FlitDeserializer(i, FLIT_WIDTH, AXI4PacketWidth(bus_io)))
-    val serializer_br     = Module(new FlitSerializer(i, AXI4PacketWidth(bus_io), FLIT_WIDTH))
+    val deserializer_a    = Module(new FlitDeserializer(i, FLIT_WIDTH, AXI4PacketWidth(bus_io), 2))
+    val deserializer_w    = Module(new FlitDeserializer(i, FLIT_WIDTH, AXI4PacketWidth(bus_io), 1))
+    val serializer_br     = Module(new FlitSerializer(i, AXI4PacketWidth(bus_io), FLIT_WIDTH, 0))
     val flow_control_send = Module(new FlitFlowControlSend)
     val flow_control_recv = Module(new FlitFlowControlRecv)
 

@@ -12,7 +12,7 @@ class NetworkSimpleWrapper(PACKET_WIDTH: Int = Config.SIMPLE_PACKET_WIDTH) exten
   val network = Module(new Network)
 
   for (i <- 0 until NUM_USER_SEND_PORTS) {
-    val serializer        = Module(new FlitSerializer(i, PACKET_WIDTH, FLIT_WIDTH))
+    val serializer        = Module(new FlitSerializer(i, PACKET_WIDTH, FLIT_WIDTH, 0))
     val flow_control_send = Module(new FlitFlowControlSend)
     serializer.io.in_packet      <> io.send(i)
     serializer.io.clock_noc      := clock
@@ -25,7 +25,7 @@ class NetworkSimpleWrapper(PACKET_WIDTH: Int = Config.SIMPLE_PACKET_WIDTH) exten
   }
 
   for (i <- 0 until NUM_USER_RECV_PORTS) {
-    val deserializer      = Module(new FlitDeserializer(i, FLIT_WIDTH, PACKET_WIDTH))
+    val deserializer      = Module(new FlitDeserializer(i, FLIT_WIDTH, PACKET_WIDTH, 0))
     val flow_control_recv = Module(new FlitFlowControlRecv)
     io.recv(i)                <> deserializer.io.out_packet
     deserializer.io.clock_noc := clock

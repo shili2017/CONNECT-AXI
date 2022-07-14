@@ -3,7 +3,9 @@ package connect_axi
 import chisel3._
 import chisel3.util._
 
-class FlitSerializer(val ID: Int, val IN_PACKET_WIDTH: Int, val OUT_FLIT_WIDTH: Int) extends Module with Config {
+class FlitSerializer(val ID: Int, val IN_PACKET_WIDTH: Int, val OUT_FLIT_WIDTH: Int, val VC: Int)
+    extends Module
+    with Config {
   val io = IO(new Bundle {
     val in_packet = Flipped(Decoupled(UInt(IN_PACKET_WIDTH.W)))
     val out_flit  = Decoupled(UInt(OUT_FLIT_WIDTH.W))
@@ -13,7 +15,7 @@ class FlitSerializer(val ID: Int, val IN_PACKET_WIDTH: Int, val OUT_FLIT_WIDTH: 
   val packet = Wire(Decoupled(UInt(IN_PACKET_WIDTH.W)))
 
   if (USE_FIFO_IP) {
-    val fifo = Module(new dcfifo(lpm_width = IN_PACKET_WIDTH))
+    val fifo = Module(new dcfifo(lpm_width = IN_PACKET_WIDTH, lpm_widthu = 2, lpm_numwords = 4, lpm_showahead = "ON"))
     fifo.io.aclr       := reset
     fifo.io.wrclk      := clock
     fifo.io.data       := io.in_packet.bits
@@ -84,13 +86,23 @@ class FlitSerializer(val ID: Int, val IN_PACKET_WIDTH: Int, val OUT_FLIT_WIDTH: 
       }
       when(io.out_flit.fire) {
         cnt := cnt + 1.U
-        printf("%d: [Serializer   %d] out_flit=%b (%d/%d)\n", DebugTimer(), ID.U, io.out_flit.bits, cnt + 1.U, LEN.U)
+        printf(
+          "%d: [Serializer   %d] vc=%d out_flit=%b (%d/%d)\n",
+          DebugTimer(),
+          ID.U,
+          VC.U,
+          io.out_flit.bits,
+          cnt + 1.U,
+          LEN.U
+        )
       }
     }
   }
 }
 
-class FlitDeserializer(val ID: Int, val IN_FLIT_WIDTH: Int, val OUT_PACKET_WIDTH: Int) extends Module with Config {
+class FlitDeserializer(val ID: Int, val IN_FLIT_WIDTH: Int, val OUT_PACKET_WIDTH: Int, val VC: Int)
+    extends Module
+    with Config {
   val io = IO(new Bundle {
     val in_flit    = Flipped(Decoupled(UInt(IN_FLIT_WIDTH.W)))
     val out_packet = Decoupled(UInt(OUT_PACKET_WIDTH.W))
@@ -199,13 +211,14 @@ class FlitDeserializer(val ID: Int, val IN_FLIT_WIDTH: Int, val OUT_PACKET_WIDTH
 
     if (DEBUG_DESERIALIZER) {
       when(io.in_flit.fire) {
-        printf("%d: [Deserializer %d]  in_flit=%b\n", DebugTimer(), ID.U, io.in_flit.bits)
+        printf("%d: [Deserializer %d] vc=%d  in_flit=%b\n", DebugTimer(), ID.U, VC.U, io.in_flit.bits)
       }
       when(packet.fire) {
         printf(
-          "%d: [Deserializer %d] out_packet=%b\n",
+          "%d: [Deserializer %d] vc=%d out_packet=%b\n",
           DebugTimer(),
           ID.U,
+          VC.U,
           packet.bits
         )
       }

@@ -104,7 +104,7 @@ class OutPortFIFO(VC: Int) extends Module with Config {
   fifo.io.deq          <> io.device_flit
   io.device_flit.bits  := fifo.io.deq.bits
   io.device_flit.valid := fifo.io.deq.valid && io.network_credit.ready
-  fifo.io.deq.ready    := io.device_flit.ready
+  fifo.io.deq.ready    := io.device_flit.ready && io.network_credit.ready
 
   // Credit
   io.network_credit.bits  := VC.U(VC_BITS.W)

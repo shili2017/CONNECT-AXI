@@ -6,19 +6,16 @@ import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 
 class NetworkAXI4WrapperTester extends AnyFlatSpec with ChiselScalatestTester {
-  behavior.of("NetworkAXI4WrapperTester")
-
   it should "pass AXI4 test" in {
     val annotation = Seq(
       VerilatorBackendAnnotation,
       WriteVcdAnnotation
     )
 
-    val TEST_LEN = 8
+    val TEST_LEN = 2
 
     test(new AXI4Testbench(TEST_LEN)).withAnnotations(annotation) { tb =>
       tb.clock.step()
-
       tb.io.start_write(0).poke(false)
       tb.io.start_write(1).poke(false)
       tb.io.start_read(0).poke(false)
@@ -38,7 +35,9 @@ class NetworkAXI4WrapperTester extends AnyFlatSpec with ChiselScalatestTester {
       }
     }
   }
+}
 
+class NetworkAXI4LiteWrapperTester extends AnyFlatSpec with ChiselScalatestTester {
   it should "pass AXI4-Lite test" in {
     val annotation = Seq(
       VerilatorBackendAnnotation,
@@ -47,7 +46,6 @@ class NetworkAXI4WrapperTester extends AnyFlatSpec with ChiselScalatestTester {
 
     test(new AXI4LiteTestbench).withAnnotations(annotation) { tb =>
       tb.clock.step()
-
       tb.io.start_write(0).poke(false)
       tb.io.start_write(1).poke(false)
       tb.io.start_read(0).poke(false)
@@ -65,7 +63,9 @@ class NetworkAXI4WrapperTester extends AnyFlatSpec with ChiselScalatestTester {
       tb.io.slave_buffer_peek(0).expect(BigInt("deadbeefdeadbeef", 16))
     }
   }
+}
 
+class NetworkSimpleWrapperTester extends AnyFlatSpec with ChiselScalatestTester {
   it should "pass simple test" in {
     val annotation = Seq(
       VerilatorBackendAnnotation,
@@ -73,11 +73,10 @@ class NetworkAXI4WrapperTester extends AnyFlatSpec with ChiselScalatestTester {
     )
 
     test(new NetworkSimpleWrapper(72)).withAnnotations(annotation) { tb =>
-      tb.clock.step()
-
       val packet_0_2 = BigInt("e01234567812345678", 16)
       val packet_1_3 = BigInt("f1deadbeefdeadbeef", 16)
 
+      tb.clock.step()
       for (i <- 0 until Config.NUM_USER_SEND_PORTS) {
         tb.io.send(i).bits.poke(0.U)
         tb.io.send(i).valid.poke(false.B)
