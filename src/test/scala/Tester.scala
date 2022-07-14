@@ -16,10 +16,11 @@ class NetworkAXI4WrapperTester extends AnyFlatSpec with ChiselScalatestTester {
 
     test(new AXI4Testbench(TEST_LEN)).withAnnotations(annotation) { tb =>
       tb.clock.step()
-      tb.io.start_write(0).poke(false)
-      tb.io.start_write(1).poke(false)
-      tb.io.start_read(0).poke(false)
-      tb.io.start_read(1).poke(false)
+      for (i <- 0 until Config.NUM_MASTER_DEVICES) {
+        tb.io.start_write(i).poke(false)
+        tb.io.start_read(i).poke(false)
+        tb.io.target_addr(i).poke((i + Config.NUM_MASTER_DEVICES).U)
+      }
       tb.clock.step()
       tb.io.start_write(0).poke(true)
       tb.clock.step()
@@ -46,10 +47,11 @@ class NetworkAXI4LiteWrapperTester extends AnyFlatSpec with ChiselScalatestTeste
 
     test(new AXI4LiteTestbench).withAnnotations(annotation) { tb =>
       tb.clock.step()
-      tb.io.start_write(0).poke(false)
-      tb.io.start_write(1).poke(false)
-      tb.io.start_read(0).poke(false)
-      tb.io.start_read(1).poke(false)
+      for (i <- 0 until Config.NUM_MASTER_DEVICES) {
+        tb.io.start_write(i).poke(false)
+        tb.io.start_read(i).poke(false)
+        tb.io.target_addr(i).poke((i + Config.NUM_MASTER_DEVICES).U)
+      }
       tb.clock.step()
       tb.io.start_write(0).poke(true)
       tb.clock.step()
