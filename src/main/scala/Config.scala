@@ -14,9 +14,13 @@ trait Config {
   val PROTOCOL            = "AXI4" // should be in ["AXI4", "AXI4-Lite", "Simple"]
   val NUM_MASTER_DEVICES  = 2
   val NUM_SLAVE_DEVICES   = 2
-  val SIMPLE_PACKET_WIDTH = 80
+  val SIMPLE_PACKET_WIDTH = 80 // only available when PROTOCOL is "Simple"
+  val WRITE_INTERLEAVE    = false // transfer-level write interleaving for AXI4 slave devices
+  // The following two parameters are only available when PROTOCOL is "AXI4" and WRITE_INTERLEAVE is true
+  val AXI4_MAX_BURST_SIZE = 8 // should be in [1, 2, 4, 8, 16, 32, 64, 128] in bytes
+  val AXI4_MAX_BURST_LEN  = 16 // should be in [1, 256]
 
-  // Induced parameters
+  // Induced parameters, DO NOT CHANGE
   val FLIT_DATA_WIDTH = REAL_FLIT_DATA_WIDTH - log2Up(NUM_USER_SEND_PORTS)
   val SRC_BITS        = log2Up(NUM_USER_SEND_PORTS)
   val DEST_BITS       = log2Up(NUM_USER_RECV_PORTS)

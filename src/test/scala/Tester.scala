@@ -12,7 +12,7 @@ class NetworkAXI4WrapperTester extends AnyFlatSpec with ChiselScalatestTester {
       WriteVcdAnnotation
     )
 
-    val TEST_LEN = 2
+    val TEST_LEN = 8
 
     test(new AXI4Testbench(TEST_LEN)).withAnnotations(annotation) { tb =>
       tb.clock.step()
