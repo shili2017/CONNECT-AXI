@@ -105,3 +105,35 @@ class NetworkSimpleWrapperTester extends AnyFlatSpec with ChiselScalatestTester 
     }
   }
 }
+
+class NetworkAXI4StreamWrapperTester extends AnyFlatSpec with ChiselScalatestTester {
+  it should "pass AXI4-Stream test" in {
+    val annotation = Seq(
+      VerilatorBackendAnnotation,
+      WriteVcdAnnotation
+    )
+
+    val TEST_LEN = 16
+
+    test(new AXI4StreamTestbench(TEST_LEN)).withAnnotations(annotation) { tb =>
+      tb.clock.step()
+      for (i <- 0 until Config.NUM_MASTER_DEVICES) {
+        tb.io.start(i).poke(false)
+        tb.io.target_dest(i).poke(((i + Config.NUM_MASTER_DEVICES / 2) % Config.NUM_MASTER_DEVICES).U)
+      }
+      tb.clock.step()
+      tb.io.start(0).poke(true)
+      tb.clock.step()
+      tb.io.start(0).poke(false)
+      tb.io.start(1).poke(true)
+      tb.clock.step()
+      tb.io.start(1).poke(false)
+      tb.clock.step(200)
+
+      for (i <- 0 until TEST_LEN) {
+        tb.io.slave_buffer_peek(2)(i).expect((BigInt("deadbeefdeadbeef", 16) + i))
+        tb.io.slave_buffer_peek(3)(i).expect((BigInt("deadbeefdeadbeef", 16) + i))
+      }
+    }
+  }
+}

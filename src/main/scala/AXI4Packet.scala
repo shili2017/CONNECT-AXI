@@ -35,7 +35,17 @@ object AXI4StreamPacketWidth extends Config {
 
 // Customized by user
 object GetDestFromAXI4ChannelA extends Config {
-  def apply(a: AXI4LiteChannelA): UInt = a.addr(DEST_BITS - 1, 0)
+  def apply(a: AXI4LiteChannelA): UInt = {
+    assert(DEST_BITS <= a.addr.getWidth)
+    a.addr(DEST_BITS - 1, 0)
+  }
+}
+
+object GetDestFromAXI4StreamChannelT extends Config {
+  def apply(t: AXI4StreamChannelT): UInt = {
+    assert(DEST_BITS <= t.dest.getWidth)
+    t.dest(DEST_BITS - 1, 0)
+  }
 }
 
 object GetChannelIDFromAXI4Packet {
@@ -225,5 +235,34 @@ object Packet2AXI4ChannelR {
       r.resp := packet(4, 3)
       r
     }
+  }
+}
+
+object AXI4StreamChannelT2PacketData {
+  def apply(t: AXI4StreamChannelT): UInt = {
+    Cat(t.id, t.keep, t.strb, t.data, t.last.asUInt, t.dest)
+  }
+}
+
+object Packet2AXI4StreamChannelT {
+  def apply(packet: UInt): AXI4StreamChannelT = {
+    assert(packet.getWidth == AXI4StreamPacketWidth())
+    val t = Wire(new AXI4StreamChannelT)
+    t.id := packet(
+      4 + AXI4Parameters.AXI4DataWidth + AXI4Parameters.AXI4DataWidth / 4 + AXI4Parameters.AXI4IdWidth,
+      5 + AXI4Parameters.AXI4DataWidth + AXI4Parameters.AXI4DataWidth / 4
+    )
+    t.keep := packet(
+      4 + AXI4Parameters.AXI4DataWidth + AXI4Parameters.AXI4DataWidth / 4,
+      5 + AXI4Parameters.AXI4DataWidth + AXI4Parameters.AXI4DataWidth / 8
+    )
+    t.strb := packet(
+      4 + AXI4Parameters.AXI4DataWidth + AXI4Parameters.AXI4DataWidth / 8,
+      5 + AXI4Parameters.AXI4DataWidth
+    )
+    t.data := packet(4 + AXI4Parameters.AXI4DataWidth, 5)
+    t.last := packet(4).asBool
+    t.dest := packet(3, 0)
+    t
   }
 }

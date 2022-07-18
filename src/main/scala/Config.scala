@@ -11,7 +11,7 @@ trait Config {
   val FLIT_BUFFER_DEPTH    = 4
 
   // CONNECT AXI wrapper parameters
-  val PROTOCOL            = "AXI4" // should be in ["AXI4", "AXI4-Lite", "Simple"]
+  val PROTOCOL            = "AXI4" // should be in ["AXI4", "AXI4-Lite", "AXI4-Stream", "Simple"]
   val NUM_MASTER_DEVICES  = 2
   val NUM_SLAVE_DEVICES   = 2
   val SIMPLE_PACKET_WIDTH = 80 // only available when PROTOCOL is "Simple"
@@ -27,7 +27,7 @@ trait Config {
   val WRITE_BUFFER_DEPTH = if (PROTOCOL == "AXI4") AXI4_MAX_BURST_LEN else 1
 
   // Debug messages
-  val DEBUG_AXI4_BRIDGE    = true
+  val DEBUG_AXI4_BRIDGE    = false
   val DEBUG_SERIALIZER     = false
   val DEBUG_DESERIALIZER   = false
   val DEBUG_NETWORK_FLIT   = false
