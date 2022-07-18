@@ -226,9 +226,17 @@ class AXI4SlaveBridge[B <: AXI4LiteIO](bus_io: B)(val ID: Int) extends Module wi
   val stage1 = Module(new AXI4SlaveBridgeStage1(bus_io)(ID))
   val stage2 = Module(new AXI4SlaveBridgeStage2(bus_io))
 
-  stage1.io.axi          <> io.axi
-  stage2.io.in_aw_packet <> stage1.io.aw_packet
-  stage2.io.in_w_packet  <> stage1.io.w_packet
+  stage1.io.axi <> io.axi
+  if (WRITE_INTERLEAVE) {
+    val buffer = Module(new AXI4SlaveBridgeWriteBuffer(bus_io))
+    buffer.io.stage1_aw_packet <> stage1.io.aw_packet
+    buffer.io.stage1_w_packet  <> stage1.io.w_packet
+    buffer.io.stage2_aw_packet <> stage2.io.in_aw_packet
+    buffer.io.stage2_w_packet  <> stage2.io.in_w_packet
+  } else {
+    stage2.io.in_aw_packet <> stage1.io.aw_packet
+    stage2.io.in_w_packet  <> stage1.io.w_packet
+  }
   stage2.io.in_b_packet  <> stage1.io.b_packet
   stage2.io.in_ar_packet <> stage1.io.ar_packet
   stage2.io.in_r_packet  <> stage1.io.r_packet
@@ -421,4 +429,52 @@ class AXI4SlaveBridgeStage2[B <: AXI4LiteIO](bus_io: B) extends Module with Conf
   arbiter.io.in(0) <> io.in_b_packet
   arbiter.io.in(1) <> io.in_r_packet
   io.out_br_packet <> arbiter.io.out
+}
+
+class AXI4SlaveBridgeWriteBuffer[B <: AXI4LiteIO](bus_io: B) extends Module with Config {
+  val io = IO(new Bundle {
+    // To stage 1
+    val stage1_aw_packet = Decoupled(UInt(AXI4PacketWidth(bus_io).W))
+    val stage1_w_packet  = Decoupled(UInt(AXI4PacketWidth(bus_io).W))
+    // From stage 2
+    val stage2_aw_packet = Flipped(Decoupled(UInt(AXI4PacketWidth(bus_io).W)))
+    val stage2_w_packet  = Flipped(Decoupled(UInt(AXI4PacketWidth(bus_io).W)))
+  })
+
+  // TODO: map master device ID with buffer index, currently using identical mapping
+  val buffer = for (i <- 0 until NUM_MASTER_DEVICES) yield {
+    val _buffer = Module(new BasicFIFO(WRITE_BUFFER_DEPTH, AXI4PacketWidth(bus_io))())
+    _buffer
+  }
+
+  // Handle incoming write packets from stage 2
+  val src = Wire(UInt(SRC_BITS.W))
+  src                      := GetSrcFromPacket(bus_io)(io.stage2_w_packet.bits)
+  io.stage2_w_packet.ready := false.B
+  for (i <- 0 until NUM_MASTER_DEVICES) {
+    buffer(i).io.enq.bits  := io.stage2_w_packet.bits
+    buffer(i).io.enq.valid := io.stage2_w_packet.valid && (src === i.U)
+    when(src === i.U) {
+      io.stage2_w_packet.ready := buffer(i).io.enq.ready
+    }
+  }
+
+  // Find the master device from incoming aw packets from stage 2
+  io.stage1_aw_packet <> io.stage2_aw_packet
+  val device = RegInit(0.U(log2Up(NUM_MASTER_DEVICES).W))
+  when(io.stage2_aw_packet.fire) {
+    device := GetSrcFromPacket(bus_io)(io.stage2_aw_packet.bits)
+  }
+
+  // Send write packets to stage 1
+  // Note that the correctness of this part is guaranteed by write buffer and stage 1 together
+  io.stage1_w_packet.bits  := 0.U
+  io.stage1_w_packet.valid := false.B
+  for (i <- 0 until NUM_MASTER_DEVICES) {
+    when(device === i.U) {
+      io.stage1_w_packet.bits  := buffer(i).io.deq.bits
+      io.stage1_w_packet.valid := buffer(i).io.deq.valid
+    }
+    buffer(i).io.deq.ready := io.stage1_w_packet.ready && (device === i.U)
+  }
 }

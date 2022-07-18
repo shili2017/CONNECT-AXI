@@ -21,21 +21,18 @@ class NetworkAXI4Wrapper(AXI4_PROTOCOL: String = Config.PROTOCOL) extends Module
   assert(NUM_VCS >= 3)
 
   // AXI4 burst len & size check for write interleaving buffer
-  assert(List(1, 2, 4, 8, 16, 32, 64, 128).contains(AXI4_MAX_BURST_SIZE))
-  assert(1 to 256 contains AXI4_MAX_BURST_LEN)
   if (AXI4_PROTOCOL == "AXI4" && WRITE_INTERLEAVE) {
+    assert(1 to 256 contains AXI4_MAX_BURST_LEN)
     for (i <- 0 until NUM_MASTER_DEVICES) {
       val axi = io.master(i).asInstanceOf[AXI4IO]
       when(axi.aw.fire) {
         assert(axi.aw.bits.len <= (AXI4_MAX_BURST_LEN - 1).U)
-        assert((1.U << axi.aw.bits.size) <= AXI4_MAX_BURST_SIZE.U)
       }
     }
     for (i <- 0 until NUM_SLAVE_DEVICES) {
       val axi = io.slave(i).asInstanceOf[AXI4IO]
       when(axi.aw.fire) {
         assert(axi.aw.bits.len <= (AXI4_MAX_BURST_LEN - 1).U)
-        assert((1.U << axi.aw.bits.size) <= AXI4_MAX_BURST_SIZE.U)
       }
     }
   }

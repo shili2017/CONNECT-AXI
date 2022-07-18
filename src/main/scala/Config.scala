@@ -15,20 +15,19 @@ trait Config {
   val NUM_MASTER_DEVICES  = 2
   val NUM_SLAVE_DEVICES   = 2
   val SIMPLE_PACKET_WIDTH = 80 // only available when PROTOCOL is "Simple"
-  val WRITE_INTERLEAVE    = false // transfer-level write interleaving for AXI4 slave devices
-  // The following two parameters are only available when PROTOCOL is "AXI4" and WRITE_INTERLEAVE is true
-  val AXI4_MAX_BURST_SIZE = 8 // should be in [1, 2, 4, 8, 16, 32, 64, 128] in bytes
-  val AXI4_MAX_BURST_LEN  = 16 // should be in [1, 256]
+  val WRITE_INTERLEAVE    = true // transfer-level write interleaving for AXI4 slave devices
+  val AXI4_MAX_BURST_LEN  = 16 // only available when PROTOCOL is "AXI4" and WRITE_INTERLEAVE is true
 
   // Induced parameters, DO NOT CHANGE
-  val FLIT_DATA_WIDTH = REAL_FLIT_DATA_WIDTH - log2Up(NUM_USER_SEND_PORTS)
-  val SRC_BITS        = log2Up(NUM_USER_SEND_PORTS)
-  val DEST_BITS       = log2Up(NUM_USER_RECV_PORTS)
-  val VC_BITS         = log2Up(NUM_VCS)
-  val FLIT_WIDTH      = FLIT_DATA_WIDTH + SRC_BITS + DEST_BITS + VC_BITS + 2
+  val FLIT_DATA_WIDTH    = REAL_FLIT_DATA_WIDTH - log2Up(NUM_USER_SEND_PORTS)
+  val SRC_BITS           = log2Up(NUM_USER_SEND_PORTS)
+  val DEST_BITS          = log2Up(NUM_USER_RECV_PORTS)
+  val VC_BITS            = log2Up(NUM_VCS)
+  val FLIT_WIDTH         = FLIT_DATA_WIDTH + SRC_BITS + DEST_BITS + VC_BITS + 2
+  val WRITE_BUFFER_DEPTH = if (PROTOCOL == "AXI4") AXI4_MAX_BURST_LEN else 1
 
   // Debug messages
-  val DEBUG_AXI4_BRIDGE    = false
+  val DEBUG_AXI4_BRIDGE    = true
   val DEBUG_SERIALIZER     = false
   val DEBUG_DESERIALIZER   = false
   val DEBUG_NETWORK_FLIT   = false

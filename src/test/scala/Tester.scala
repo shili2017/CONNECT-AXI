@@ -12,26 +12,25 @@ class NetworkAXI4WrapperTester extends AnyFlatSpec with ChiselScalatestTester {
       WriteVcdAnnotation
     )
 
-    val TEST_LEN = 8
+    val TEST_LEN = 16
 
     test(new AXI4Testbench(TEST_LEN)).withAnnotations(annotation) { tb =>
       tb.clock.step()
       for (i <- 0 until Config.NUM_MASTER_DEVICES) {
         tb.io.start_write(i).poke(false)
         tb.io.start_read(i).poke(false)
-        tb.io.target_addr(i).poke((i + Config.NUM_MASTER_DEVICES).U)
+        tb.io.target_addr(i).poke(2.U)
       }
       tb.clock.step()
       tb.io.start_write(0).poke(true)
       tb.clock.step()
       tb.io.start_write(0).poke(false)
-      tb.io.start_read(1).poke(true)
+      tb.io.start_write(1).poke(true)
       tb.clock.step()
-      tb.io.start_read(1).poke(false)
+      tb.io.start_write(1).poke(false)
       tb.clock.step(200)
 
       for (i <- 0 until TEST_LEN) {
-        tb.io.master_buffer_peek(1)(i).expect(i)
         tb.io.slave_buffer_peek(0)(i).expect((BigInt("deadbeefdeadbeef", 16) + i))
       }
     }
