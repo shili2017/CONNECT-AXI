@@ -1,49 +1,50 @@
 package connect_axi
 
 import chisel3._
+import chipsalliance.rocketchip.config._
 
-class NetworkAXI4Wrapper(AXI4_PROTOCOL: String = Config.PROTOCOL) extends Module with Config {
+class NetworkAXI4Wrapper(implicit p: Parameters) extends Module {
   // Protocol specification
-  assert(AXI4_PROTOCOL == "AXI4" || AXI4_PROTOCOL == "AXI4-Lite")
+  assert(p(PROTOCOL) == "AXI4" || p(PROTOCOL) == "AXI4-Lite")
 
-  val bus_io = if (AXI4_PROTOCOL == "AXI4") new AXI4IO else new AXI4LiteIO
+  val bus_io = if (p(PROTOCOL) == "AXI4") new AXI4IO else new AXI4LiteIO
 
   val io = IO(new Bundle {
-    val master = Vec(NUM_MASTER_DEVICES, Flipped(bus_io))
-    val slave  = Vec(NUM_SLAVE_DEVICES, bus_io)
+    val master = Vec(p(NUM_MASTER_DEVICES), Flipped(bus_io))
+    val slave  = Vec(p(NUM_SLAVE_DEVICES), bus_io)
   })
 
   // Each AXI4 device need to have a send port and a recv port
-  assert(NUM_USER_SEND_PORTS == NUM_USER_RECV_PORTS)
-  assert(NUM_MASTER_DEVICES + NUM_SLAVE_DEVICES <= NUM_USER_SEND_PORTS)
+  assert(p(NUM_USER_SEND_PORTS) == p(NUM_USER_RECV_PORTS))
+  assert(p(NUM_MASTER_DEVICES) + p(NUM_SLAVE_DEVICES) <= p(NUM_USER_SEND_PORTS))
 
   // AXI4 protocol requires at least 3 virtual channels
-  assert(NUM_VCS >= 3)
+  assert(p(NUM_VCS) >= 3)
 
   // AXI4 burst len & size check for write interleaving buffer
-  if (AXI4_PROTOCOL == "AXI4" && WRITE_INTERLEAVE) {
-    assert(1 to 256 contains AXI4_MAX_BURST_LEN)
-    for (i <- 0 until NUM_MASTER_DEVICES) {
+  if (p(PROTOCOL) == "AXI4" && p(WRITE_INTERLEAVE)) {
+    assert(1 to 256 contains p(AXI4_MAX_BURST_LEN))
+    for (i <- 0 until p(NUM_MASTER_DEVICES)) {
       val axi = io.master(i).asInstanceOf[AXI4IO]
       when(axi.aw.fire) {
-        assert(axi.aw.bits.len <= (AXI4_MAX_BURST_LEN - 1).U)
+        assert(axi.aw.bits.len <= (p(AXI4_MAX_BURST_LEN) - 1).U)
       }
     }
-    for (i <- 0 until NUM_SLAVE_DEVICES) {
+    for (i <- 0 until p(NUM_SLAVE_DEVICES)) {
       val axi = io.slave(i).asInstanceOf[AXI4IO]
       when(axi.aw.fire) {
-        assert(axi.aw.bits.len <= (AXI4_MAX_BURST_LEN - 1).U)
+        assert(axi.aw.bits.len <= (p(AXI4_MAX_BURST_LEN) - 1).U)
       }
     }
   }
 
   val network = Module(new Network)
 
-  for (i <- 0 until NUM_MASTER_DEVICES) {
+  for (i <- 0 until p(NUM_MASTER_DEVICES)) {
     val bridge            = Module(new AXI4MasterBridge(bus_io)(i))
-    val serializer_a      = Module(new FlitSerializer(i, AXI4PacketWidth(bus_io), FLIT_WIDTH, 2))
-    val serializer_w      = Module(new FlitSerializer(i, AXI4PacketWidth(bus_io), FLIT_WIDTH, 1))
-    val deserializer_br   = Module(new FlitDeserializer(i, FLIT_WIDTH, AXI4PacketWidth(bus_io), 0))
+    val serializer_a      = Module(new FlitSerializer(i, AXI4PacketWidth(bus_io), p(FLIT_WIDTH), 2))
+    val serializer_w      = Module(new FlitSerializer(i, AXI4PacketWidth(bus_io), p(FLIT_WIDTH), 1))
+    val deserializer_br   = Module(new FlitDeserializer(i, p(FLIT_WIDTH), AXI4PacketWidth(bus_io), 0))
     val flow_control_send = Module(new FlitFlowControlSend)
     val flow_control_recv = Module(new FlitFlowControlRecv)
 
@@ -65,15 +66,15 @@ class NetworkAXI4Wrapper(AXI4_PROTOCOL: String = Config.PROTOCOL) extends Module
     network.io.recv(i)                 <> flow_control_recv.io.recv
   }
 
-  for (i <- NUM_MASTER_DEVICES until NUM_MASTER_DEVICES + NUM_SLAVE_DEVICES) {
+  for (i <- p(NUM_MASTER_DEVICES) until p(NUM_MASTER_DEVICES) + p(NUM_SLAVE_DEVICES)) {
     val bridge            = Module(new AXI4SlaveBridge(bus_io)(i))
-    val deserializer_a    = Module(new FlitDeserializer(i, FLIT_WIDTH, AXI4PacketWidth(bus_io), 2))
-    val deserializer_w    = Module(new FlitDeserializer(i, FLIT_WIDTH, AXI4PacketWidth(bus_io), 1))
-    val serializer_br     = Module(new FlitSerializer(i, AXI4PacketWidth(bus_io), FLIT_WIDTH, 0))
+    val deserializer_a    = Module(new FlitDeserializer(i, p(FLIT_WIDTH), AXI4PacketWidth(bus_io), 2))
+    val deserializer_w    = Module(new FlitDeserializer(i, p(FLIT_WIDTH), AXI4PacketWidth(bus_io), 1))
+    val serializer_br     = Module(new FlitSerializer(i, AXI4PacketWidth(bus_io), p(FLIT_WIDTH), 0))
     val flow_control_send = Module(new FlitFlowControlSend)
     val flow_control_recv = Module(new FlitFlowControlRecv)
 
-    bridge.io.axi                      <> io.slave(i - NUM_MASTER_DEVICES)
+    bridge.io.axi                      <> io.slave(i - p(NUM_MASTER_DEVICES))
     deserializer_a.io.out_packet       <> bridge.io.a_packet
     deserializer_a.io.clock_noc        := clock
     deserializer_w.io.out_packet       <> bridge.io.w_packet

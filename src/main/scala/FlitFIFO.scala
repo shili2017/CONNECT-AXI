@@ -2,12 +2,15 @@ package connect_axi
 
 import chisel3._
 import chisel3.util._
+import chipsalliance.rocketchip.config._
 
 class BasicFIFO(
   val DEPTH:              Int,
   val DATA_WIDTH:         Int
 )(val ALMOST_FULL_VALUE:  Int = DEPTH - 1,
-  val ALMOST_EMPTY_VALUE: Int = 1)
+  val ALMOST_EMPTY_VALUE: Int = 1
+)(
+  implicit p: Parameters)
     extends Module {
   val io = IO(new Bundle {
     val enq          = Flipped(Decoupled(UInt(DATA_WIDTH.W)))
@@ -18,7 +21,7 @@ class BasicFIFO(
     val almost_empty = Output(Bool())
   })
 
-  if (Config.USE_FIFO_IP) {
+  if (p(USE_FIFO_IP)) {
     val fifo = Module(
       new scfifo(
         lpm_width          = DATA_WIDTH,
@@ -57,16 +60,16 @@ class BasicFIFO(
   }
 }
 
-class InPortFIFO(VC: Int) extends Module with Config {
+class InPortFIFO(VC: Int)(implicit p: Parameters) extends Module {
   val io = IO(new Bundle {
     // Device
-    val device_flit = Flipped(Decoupled(UInt(FLIT_WIDTH.W)))
+    val device_flit = Flipped(Decoupled(UInt(p(FLIT_WIDTH).W)))
     // Network
-    val network_flit   = Decoupled(UInt(FLIT_WIDTH.W))
-    val network_credit = Flipped(Decoupled(UInt(VC_BITS.W)))
+    val network_flit   = Decoupled(UInt(p(FLIT_WIDTH).W))
+    val network_credit = Flipped(Decoupled(UInt(p(VC_BITS).W)))
   })
 
-  val fifo = Module(new BasicFIFO(FLIT_BUFFER_DEPTH, FLIT_WIDTH)())
+  val fifo = Module(new BasicFIFO(p(FLIT_BUFFER_DEPTH), p(FLIT_WIDTH))())
   fifo.io.enq <> io.device_flit
 
   // Check whether incoming credit matches VC
@@ -75,7 +78,7 @@ class InPortFIFO(VC: Int) extends Module with Config {
   }
 
   // Credit
-  val credit_counter = RegInit(FLIT_BUFFER_DEPTH.U((log2Up(FLIT_BUFFER_DEPTH) + 1).W))
+  val credit_counter = RegInit(p(FLIT_BUFFER_DEPTH).U((log2Up(p(FLIT_BUFFER_DEPTH)) + 1).W))
   when(fifo.io.deq.fire && !io.network_credit.fire) {
     credit_counter := credit_counter - 1.U
   }.elsewhen(io.network_credit.fire && !fifo.io.deq.fire) {
@@ -89,16 +92,16 @@ class InPortFIFO(VC: Int) extends Module with Config {
   io.network_flit.bits  := fifo.io.deq.bits
 }
 
-class OutPortFIFO(VC: Int) extends Module with Config {
+class OutPortFIFO(VC: Int)(implicit p: Parameters) extends Module {
   val io = IO(new Bundle {
     // Device
-    val device_flit = Decoupled(UInt(FLIT_WIDTH.W)) // Output to device
+    val device_flit = Decoupled(UInt(p(FLIT_WIDTH).W)) // Output to device
     // Network
-    val network_flit   = Flipped(Decoupled(UInt(FLIT_WIDTH.W)))
-    val network_credit = Decoupled(UInt(VC_BITS.W))
+    val network_flit   = Flipped(Decoupled(UInt(p(FLIT_WIDTH).W)))
+    val network_credit = Decoupled(UInt(p(VC_BITS).W))
   })
 
-  val fifo = Module(new BasicFIFO(FLIT_BUFFER_DEPTH, FLIT_WIDTH)())
+  val fifo = Module(new BasicFIFO(p(FLIT_BUFFER_DEPTH), p(FLIT_WIDTH))())
 
   // Flit output to device
   fifo.io.deq          <> io.device_flit
@@ -107,7 +110,7 @@ class OutPortFIFO(VC: Int) extends Module with Config {
   fifo.io.deq.ready    := io.device_flit.ready && io.network_credit.ready
 
   // Credit
-  io.network_credit.bits  := VC.U(VC_BITS.W)
+  io.network_credit.bits  := VC.U(p(VC_BITS).W)
   io.network_credit.valid := io.device_flit.fire
 
   // Flit input from network

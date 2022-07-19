@@ -2,6 +2,7 @@ package connect_axi
 
 import chisel3._
 import chisel3.util._
+import chipsalliance.rocketchip.config._
 
 object DebugTimer {
   def apply() = {
@@ -31,10 +32,20 @@ object HoldUnless {
 }
 
 object Assemble {
-  def apply(data_width: Int)(data: UInt, src: UInt, vc: UInt, dst: UInt, tail: Bool, valid: Bool): UInt = {
-    assert(src.getWidth == Config.SRC_BITS)
-    assert(vc.getWidth == Config.VC_BITS)
-    assert(dst.getWidth == Config.DEST_BITS)
+  def apply(
+    data_width: Int
+  )(data:       UInt,
+    src:        UInt,
+    vc:         UInt,
+    dst:        UInt,
+    tail:       Bool,
+    valid:      Bool
+  )(
+    implicit p: Parameters
+  ): UInt = {
+    assert(src.getWidth == p(SRC_BITS))
+    assert(vc.getWidth == p(VC_BITS))
+    assert(dst.getWidth == p(DEST_BITS))
     Cat(
       valid.asUInt,
       tail.asUInt,
@@ -47,8 +58,11 @@ object Assemble {
 }
 
 object GetVC {
-  def apply(flit: UInt): UInt = {
-    assert(flit.getWidth == Config.FLIT_WIDTH)
-    flit(Config.FLIT_DATA_WIDTH + Config.SRC_BITS + Config.VC_BITS - 1, Config.FLIT_DATA_WIDTH + Config.SRC_BITS)
+  def apply(flit: UInt)(implicit p: Parameters): UInt = {
+    assert(flit.getWidth == p(FLIT_WIDTH))
+    flit(
+      p(FLIT_DATA_WIDTH) + p(SRC_BITS) + p(VC_BITS) - 1,
+      p(FLIT_DATA_WIDTH) + p(SRC_BITS)
+    )
   }
 }
