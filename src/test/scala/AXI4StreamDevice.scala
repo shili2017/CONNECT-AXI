@@ -74,7 +74,7 @@ class AXI4StreamSlaveDevice(val ID: Int, val LEN: Int) extends Module {
   io.axi.t.ready := true.B
 }
 
-class AXI4StreamTestbench(LEN: Int)(implicit p: Parameters) extends Module with ConfigTmp {
+class AXI4StreamTestbench(LEN: Int)(implicit p: Parameters) extends Module {
   val io = IO(new Bundle {
     val start              = Vec(p(NUM_MASTER_DEVICES), Input(Bool()))
     val target_dest        = Vec(p(NUM_MASTER_DEVICES), Input(UInt(4.W)))
