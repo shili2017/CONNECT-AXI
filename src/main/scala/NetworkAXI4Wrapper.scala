@@ -41,10 +41,11 @@ class NetworkAXI4Wrapper(implicit p: Parameters) extends Module {
   val network = Module(new Network)
 
   for (i <- 0 until p(NUM_MASTER_DEVICES)) {
-    val bridge            = Module(new AXI4MasterBridge(bus_io)(i))
-    val serializer_a      = Module(new FlitSerializer(i, AXI4PacketWidth(bus_io), p(FLIT_WIDTH), 2))
-    val serializer_w      = Module(new FlitSerializer(i, AXI4PacketWidth(bus_io), p(FLIT_WIDTH), 1))
-    val deserializer_br   = Module(new FlitDeserializer(i, p(FLIT_WIDTH), AXI4PacketWidth(bus_io), 0))
+    val p_                = p.alterPartial({ case DEVICE_ID => i })
+    val bridge            = Module(new AXI4MasterBridge(bus_io)(p_))
+    val serializer_a      = Module(new FlitSerializer(AXI4PacketWidth(bus_io), p(FLIT_WIDTH), 2)(p_))
+    val serializer_w      = Module(new FlitSerializer(AXI4PacketWidth(bus_io), p(FLIT_WIDTH), 1)(p_))
+    val deserializer_br   = Module(new FlitDeserializer(p(FLIT_WIDTH), AXI4PacketWidth(bus_io), 0)(p_))
     val flow_control_send = Module(new FlitFlowControlSend)
     val flow_control_recv = Module(new FlitFlowControlRecv)
 
@@ -67,10 +68,11 @@ class NetworkAXI4Wrapper(implicit p: Parameters) extends Module {
   }
 
   for (i <- p(NUM_MASTER_DEVICES) until p(NUM_MASTER_DEVICES) + p(NUM_SLAVE_DEVICES)) {
-    val bridge            = Module(new AXI4SlaveBridge(bus_io)(i))
-    val deserializer_a    = Module(new FlitDeserializer(i, p(FLIT_WIDTH), AXI4PacketWidth(bus_io), 2))
-    val deserializer_w    = Module(new FlitDeserializer(i, p(FLIT_WIDTH), AXI4PacketWidth(bus_io), 1))
-    val serializer_br     = Module(new FlitSerializer(i, AXI4PacketWidth(bus_io), p(FLIT_WIDTH), 0))
+    val p_                = p.alterPartial({ case DEVICE_ID => i })
+    val bridge            = Module(new AXI4SlaveBridge(bus_io)(p_))
+    val deserializer_a    = Module(new FlitDeserializer(p(FLIT_WIDTH), AXI4PacketWidth(bus_io), 2)(p_))
+    val deserializer_w    = Module(new FlitDeserializer(p(FLIT_WIDTH), AXI4PacketWidth(bus_io), 1)(p_))
+    val serializer_br     = Module(new FlitSerializer(AXI4PacketWidth(bus_io), p(FLIT_WIDTH), 0)(p_))
     val flow_control_send = Module(new FlitFlowControlSend)
     val flow_control_recv = Module(new FlitFlowControlRecv)
 

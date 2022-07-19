@@ -3,15 +3,12 @@ BUILD_DIR = ./build
 TEST_DIR = ./test_run_dir
 
 CHISEL_SRC = $(SRC_DIR)/main/scala/*.scala
-ARTIFACT = $(BUILD_DIR)/Top.v
 
-TOP_MODULE = Testbench
+PROTOCOL ?= AXI4
 
-all: $(ARTIFACT)
-
-$(ARTIFACT): $(CHISEL_SRC)
+all:  $(CHISEL_SRC)
 	@mkdir -p $(BUILD_DIR)
-	sbt "run -td $(BUILD_DIR)"
+	sbt "run $(PROTOCOL) -td $(BUILD_DIR)"
 
 test: $(CHISEL_SRC)
 	@-rm -rf $(TEST_DIR)

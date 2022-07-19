@@ -15,16 +15,20 @@ class NetworkAXI4StreamWrapper(implicit p: Parameters) extends Module {
   // Each AXI4-Stream slave device requires a recv port
   assert(p(NUM_SLAVE_DEVICES) == p(NUM_USER_RECV_PORTS))
 
-  val simple_wrapper = Module(new NetworkSimpleWrapper(AXI4StreamPacketWidth()))
+  val simple_wrapper = Module(new NetworkSimpleWrapper()(p.alterPartial({
+    case SIMPLE_PACKET_WIDTH => AXI4StreamPacketWidth()
+  })))
 
   for (i <- 0 until p(NUM_MASTER_DEVICES)) {
-    val bridge = Module(new AXI4StreamMasterBridge(i))
+    val p_     = p.alterPartial({ case DEVICE_ID => i })
+    val bridge = Module(new AXI4StreamMasterBridge()(p_))
     bridge.io.axi      <> io.master(i)
     bridge.io.t_packet <> simple_wrapper.io.send(i)
   }
 
   for (i <- 0 until p(NUM_SLAVE_DEVICES)) {
-    val bridge = Module(new AXI4StreamSlaveBridge(i))
+    val p_     = p.alterPartial({ case DEVICE_ID => i })
+    val bridge = Module(new AXI4StreamSlaveBridge()(p_))
     bridge.io.axi      <> io.slave(i)
     bridge.io.t_packet <> simple_wrapper.io.recv(i)
   }

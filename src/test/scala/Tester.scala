@@ -7,7 +7,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import chipsalliance.rocketchip.config._
 
 class NetworkAXI4WrapperTester extends AnyFlatSpec with ChiselScalatestTester {
-  implicit val p: Parameters = (new MyConfig).toInstance
+  implicit val p: Parameters = (new AXI4Config).toInstance
 
   it should "pass AXI4 test" in {
     val annotation = Seq(
@@ -41,12 +41,11 @@ class NetworkAXI4WrapperTester extends AnyFlatSpec with ChiselScalatestTester {
 }
 
 class NetworkAXI4LiteWrapperTester extends AnyFlatSpec with ChiselScalatestTester {
-  implicit val p: Parameters = (new MyConfig).toInstance
+  implicit val p: Parameters = (new AXI4LiteConfig).toInstance
 
   it should "pass AXI4-Lite test" in {
     val annotation = Seq(
-      VerilatorBackendAnnotation,
-      WriteVcdAnnotation
+      VerilatorBackendAnnotation
     )
 
     test(new AXI4LiteTestbench).withAnnotations(annotation) { tb =>
@@ -72,7 +71,8 @@ class NetworkAXI4LiteWrapperTester extends AnyFlatSpec with ChiselScalatestTeste
 }
 
 class NetworkSimpleWrapperTester extends AnyFlatSpec with ChiselScalatestTester {
-  implicit val p: Parameters = (new MyConfig).toInstance
+  // Test simple wrapper with packet width = 72
+  implicit val p: Parameters = (new SimpleConfig).toInstance.alterPartial({ case SIMPLE_PACKET_WIDTH => 72 })
 
   it should "pass simple test" in {
     val annotation = Seq(
@@ -80,7 +80,7 @@ class NetworkSimpleWrapperTester extends AnyFlatSpec with ChiselScalatestTester 
       WriteVcdAnnotation
     )
 
-    test(new NetworkSimpleWrapper(72)).withAnnotations(annotation) { tb =>
+    test(new NetworkSimpleWrapper).withAnnotations(annotation) { tb =>
       val packet_0_2 = BigInt("e01234567812345678", 16)
       val packet_1_3 = BigInt("f1deadbeefdeadbeef", 16)
 
@@ -114,7 +114,7 @@ class NetworkSimpleWrapperTester extends AnyFlatSpec with ChiselScalatestTester 
 }
 
 class NetworkAXI4StreamWrapperTester extends AnyFlatSpec with ChiselScalatestTester {
-  implicit val p: Parameters = (new MyConfig).toInstance
+  implicit val p: Parameters = (new AXI4StreamConfig).toInstance
 
   it should "pass AXI4-Stream test" in {
     val annotation = Seq(

@@ -37,18 +37,38 @@ case object NUM_MASTER_DEVICES extends Field[Int]
 case object NUM_SLAVE_DEVICES extends Field[Int]
 case object WRITE_INTERLEAVE extends Field[Boolean]
 case object AXI4_MAX_BURST_LEN extends Field[Int]
-case object WRITE_BUFFER_DEPTH extends Field[Int]
+case object SIMPLE_PACKET_WIDTH extends Field[Int]
 
-class WrapperConfig
+class AXI4WrapperConfig
     extends Config((site, here, up) => {
       case PROTOCOL           => "AXI4"
-      case NUM_MASTER_DEVICES => 2
-      case NUM_SLAVE_DEVICES  => 2
+      case NUM_MASTER_DEVICES => site(NUM_USER_SEND_PORTS) / 2
+      case NUM_SLAVE_DEVICES  => site(NUM_USER_RECV_PORTS) / 2
       case WRITE_INTERLEAVE   => true
       case AXI4_MAX_BURST_LEN => 16
+    })
 
-      // Induced parameters, DO NOT CHANGE
-      case WRITE_BUFFER_DEPTH => if (site(PROTOCOL) == "AXI4") site(AXI4_MAX_BURST_LEN) else 1
+class AXI4LiteWrapperConfig
+    extends Config((site, here, up) => {
+      case PROTOCOL           => "AXI4-Lite"
+      case NUM_MASTER_DEVICES => site(NUM_USER_SEND_PORTS) / 2
+      case NUM_SLAVE_DEVICES  => site(NUM_USER_RECV_PORTS) / 2
+      case WRITE_INTERLEAVE   => true
+    })
+
+class AXI4StreamWrapperConfig
+    extends Config((site, here, up) => {
+      case PROTOCOL           => "AXI4-Stream"
+      case NUM_MASTER_DEVICES => site(NUM_USER_SEND_PORTS)
+      case NUM_SLAVE_DEVICES  => site(NUM_USER_RECV_PORTS)
+    })
+
+class SimpleWrapperConfig
+    extends Config((site, here, up) => {
+      case PROTOCOL            => "Simple"
+      case NUM_MASTER_DEVICES  => site(NUM_USER_SEND_PORTS)
+      case NUM_SLAVE_DEVICES   => site(NUM_USER_RECV_PORTS)
+      case SIMPLE_PACKET_WIDTH => 80
     })
 
 case object USE_FIFO_IP extends Field[Boolean]
@@ -77,4 +97,12 @@ class DebugConfig
 
 case object DEVICE_ID extends Field[Int]
 
-class MyConfig extends Config(new ConnectConfig ++ new WrapperConfig ++ new LibraryConfig ++ new DebugConfig)
+class AXI4Config extends Config(new ConnectConfig ++ new AXI4WrapperConfig ++ new LibraryConfig ++ new DebugConfig)
+
+class AXI4LiteConfig
+    extends Config(new ConnectConfig ++ new AXI4LiteWrapperConfig ++ new LibraryConfig ++ new DebugConfig)
+
+class AXI4StreamConfig
+    extends Config(new ConnectConfig ++ new AXI4StreamWrapperConfig ++ new LibraryConfig ++ new DebugConfig)
+
+class SimpleConfig extends Config(new ConnectConfig ++ new SimpleWrapperConfig ++ new LibraryConfig ++ new DebugConfig)

@@ -5,7 +5,6 @@ import chisel3.util._
 import chipsalliance.rocketchip.config._
 
 class FlitSerializer(
-  val ID:              Int,
   val IN_PACKET_WIDTH: Int,
   val OUT_FLIT_WIDTH:  Int,
   val VC:              Int
@@ -95,7 +94,7 @@ class FlitSerializer(
         printf(
           "%d: [Serializer   %d] vc=%d out_flit=%b (%d/%d)\n",
           DebugTimer(),
-          ID.U,
+          p(DEVICE_ID).U,
           VC.U,
           io.out_flit.bits,
           cnt + 1.U,
@@ -107,7 +106,6 @@ class FlitSerializer(
 }
 
 class FlitDeserializer(
-  val ID:               Int,
   val IN_FLIT_WIDTH:    Int,
   val OUT_PACKET_WIDTH: Int,
   val VC:               Int
@@ -222,13 +220,13 @@ class FlitDeserializer(
 
     if (p(DEBUG_DESERIALIZER)) {
       when(io.in_flit.fire) {
-        printf("%d: [Deserializer %d] vc=%d  in_flit=%b\n", DebugTimer(), ID.U, VC.U, io.in_flit.bits)
+        printf("%d: [Deserializer %d] vc=%d  in_flit=%b\n", DebugTimer(), p(DEVICE_ID).U, VC.U, io.in_flit.bits)
       }
       when(packet.fire) {
         printf(
           "%d: [Deserializer %d] vc=%d out_packet=%b\n",
           DebugTimer(),
-          ID.U,
+          p(DEVICE_ID).U,
           VC.U,
           packet.bits
         )

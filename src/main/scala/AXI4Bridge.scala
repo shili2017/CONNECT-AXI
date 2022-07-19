@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util._
 import chipsalliance.rocketchip.config._
 
-class AXI4MasterBridge[B <: AXI4LiteIO](bus_io: B)(val ID: Int)(implicit p: Parameters) extends Module {
+class AXI4MasterBridge[B <: AXI4LiteIO](bus_io: B)(implicit p: Parameters) extends Module {
   val io = IO(new Bundle {
     val axi = Flipped(bus_io)
     // Response (b/r) channel at VC0, input
@@ -15,7 +15,7 @@ class AXI4MasterBridge[B <: AXI4LiteIO](bus_io: B)(val ID: Int)(implicit p: Para
     val a_packet = Decoupled(UInt(AXI4PacketWidth(bus_io).W))
   })
 
-  val stage1 = Module(new AXI4MasterBridgeStage1(bus_io)(ID))
+  val stage1 = Module(new AXI4MasterBridgeStage1(bus_io))
   val stage2 = Module(new AXI4MasterBridgeStage2(bus_io))
 
   stage1.io.axi          <> io.axi
@@ -31,33 +31,33 @@ class AXI4MasterBridge[B <: AXI4LiteIO](bus_io: B)(val ID: Int)(implicit p: Para
   // Debug
   if (p(DEBUG_AXI4_BRIDGE)) {
     when(io.axi.aw.fire) {
-      printf("%d: [AXI4 Bridge-M%d] aw addr=%b\n", DebugTimer(), ID.U, io.axi.aw.bits.addr)
+      printf("%d: [AXI4 Bridge-M%d] aw addr=%b\n", DebugTimer(), p(DEVICE_ID).U, io.axi.aw.bits.addr)
     }
     when(io.axi.w.fire) {
-      printf("%d: [AXI4 Bridge-M%d] w  data=%b\n", DebugTimer(), ID.U, io.axi.w.bits.data)
+      printf("%d: [AXI4 Bridge-M%d] w  data=%b\n", DebugTimer(), p(DEVICE_ID).U, io.axi.w.bits.data)
     }
     when(io.axi.b.fire) {
-      printf("%d: [AXI4 Bridge-M%d] b\n", DebugTimer(), ID.U)
+      printf("%d: [AXI4 Bridge-M%d] b\n", DebugTimer(), p(DEVICE_ID).U)
     }
     when(io.axi.ar.fire) {
-      printf("%d: [AXI4 Bridge-M%d] ar addr=%b\n", DebugTimer(), ID.U, io.axi.ar.bits.addr)
+      printf("%d: [AXI4 Bridge-M%d] ar addr=%b\n", DebugTimer(), p(DEVICE_ID).U, io.axi.ar.bits.addr)
     }
     when(io.axi.r.fire) {
-      printf("%d: [AXI4 Bridge-M%d] r  data=%b\n", DebugTimer(), ID.U, io.axi.r.bits.data)
+      printf("%d: [AXI4 Bridge-M%d] r  data=%b\n", DebugTimer(), p(DEVICE_ID).U, io.axi.r.bits.data)
     }
     when(io.a_packet.fire) {
-      printf("%d: [AXI4 Bridge-M%d] a_packet =%b\n", DebugTimer(), ID.U, io.a_packet.bits)
+      printf("%d: [AXI4 Bridge-M%d] a_packet =%b\n", DebugTimer(), p(DEVICE_ID).U, io.a_packet.bits)
     }
     when(io.w_packet.fire) {
-      printf("%d: [AXI4 Bridge-M%d] w_packet =%b\n", DebugTimer(), ID.U, io.w_packet.bits)
+      printf("%d: [AXI4 Bridge-M%d] w_packet =%b\n", DebugTimer(), p(DEVICE_ID).U, io.w_packet.bits)
     }
     when(io.br_packet.fire) {
-      printf("%d: [AXI4 Bridge-M%d] br_packet=%b\n", DebugTimer(), ID.U, io.br_packet.bits)
+      printf("%d: [AXI4 Bridge-M%d] br_packet=%b\n", DebugTimer(), p(DEVICE_ID).U, io.br_packet.bits)
     }
   }
 }
 
-class AXI4MasterBridgeStage1[B <: AXI4LiteIO](bus_io: B)(val ID: Int)(implicit p: Parameters) extends Module {
+class AXI4MasterBridgeStage1[B <: AXI4LiteIO](bus_io: B)(implicit p: Parameters) extends Module {
   val io = IO(new Bundle {
     val axi = Flipped(bus_io)
     // Response (b/r) channel at VC0, input
@@ -133,7 +133,7 @@ class AXI4MasterBridgeStage1[B <: AXI4LiteIO](bus_io: B)(val ID: Int)(implicit p
   // Channel AW packet
   io.aw_packet.bits := Assemble(AXI4PacketDataWidth(bus_io))(
     AXI4ChannelA2PacketData(io.axi.aw.bits, true.B).asTypeOf(UInt(AXI4PacketDataWidth(bus_io).W)),
-    ID.U(p(SRC_BITS).W),
+    p(DEVICE_ID).U(p(SRC_BITS).W),
     2.U(p(VC_BITS).W),
     GetDestFromAXI4ChannelA(io.axi.aw.bits),
     true.B,
@@ -145,7 +145,7 @@ class AXI4MasterBridgeStage1[B <: AXI4LiteIO](bus_io: B)(val ID: Int)(implicit p
   // Channel AR packet
   io.ar_packet.bits := Assemble(AXI4PacketDataWidth(bus_io))(
     AXI4ChannelA2PacketData(io.axi.ar.bits, false.B).asTypeOf(UInt(AXI4PacketDataWidth(bus_io).W)),
-    ID.U(p(SRC_BITS).W),
+    p(DEVICE_ID).U(p(SRC_BITS).W),
     2.U(p(VC_BITS).W),
     GetDestFromAXI4ChannelA(io.axi.ar.bits),
     true.B,
@@ -157,7 +157,7 @@ class AXI4MasterBridgeStage1[B <: AXI4LiteIO](bus_io: B)(val ID: Int)(implicit p
   // Channel W packet
   io.w_packet.bits := Assemble(AXI4PacketDataWidth(bus_io))(
     AXI4ChannelW2PacketData(io.axi.w.bits).asTypeOf(UInt(AXI4PacketDataWidth(bus_io).W)),
-    ID.U(p(SRC_BITS).W),
+    p(DEVICE_ID).U(p(SRC_BITS).W),
     1.U(p(VC_BITS).W),
     w_packet_dst,
     true.B,
@@ -213,7 +213,7 @@ class AXI4MasterBridgeStage2[B <: AXI4LiteIO](bus_io: B)(implicit p: Parameters)
     (GetChannelIDFromAXI4Packet(bus_io)(io.out_br_packet.bits) === AXI4ChannelID.R)
 }
 
-class AXI4SlaveBridge[B <: AXI4LiteIO](bus_io: B)(val ID: Int)(implicit p: Parameters) extends Module {
+class AXI4SlaveBridge[B <: AXI4LiteIO](bus_io: B)(implicit p: Parameters) extends Module {
   val io = IO(new Bundle {
     val axi = Flipped(Flipped(bus_io))
     // Response (b/r) channel at VC0, output
@@ -224,7 +224,7 @@ class AXI4SlaveBridge[B <: AXI4LiteIO](bus_io: B)(val ID: Int)(implicit p: Param
     val a_packet = Flipped(Decoupled(UInt(AXI4PacketWidth(bus_io).W)))
   })
 
-  val stage1 = Module(new AXI4SlaveBridgeStage1(bus_io)(ID))
+  val stage1 = Module(new AXI4SlaveBridgeStage1(bus_io))
   val stage2 = Module(new AXI4SlaveBridgeStage2(bus_io))
 
   stage1.io.axi <> io.axi
@@ -248,33 +248,33 @@ class AXI4SlaveBridge[B <: AXI4LiteIO](bus_io: B)(val ID: Int)(implicit p: Param
   // Debug
   if (p(DEBUG_AXI4_BRIDGE)) {
     when(io.axi.aw.fire) {
-      printf("%d: [AXI4 Bridge-S%d] aw addr=%b\n", DebugTimer(), ID.U, io.axi.aw.bits.addr)
+      printf("%d: [AXI4 Bridge-S%d] aw addr=%b\n", DebugTimer(), p(DEVICE_ID).U, io.axi.aw.bits.addr)
     }
     when(io.axi.w.fire) {
-      printf("%d: [AXI4 Bridge-S%d] w  data=%b\n", DebugTimer(), ID.U, io.axi.w.bits.data)
+      printf("%d: [AXI4 Bridge-S%d] w  data=%b\n", DebugTimer(), p(DEVICE_ID).U, io.axi.w.bits.data)
     }
     when(io.axi.b.fire) {
-      printf("%d: [AXI4 Bridge-S%d] b\n", DebugTimer(), ID.U)
+      printf("%d: [AXI4 Bridge-S%d] b\n", DebugTimer(), p(DEVICE_ID).U)
     }
     when(io.axi.ar.fire) {
-      printf("%d: [AXI4 Bridge-S%d] ar addr=%b\n", DebugTimer(), ID.U, io.axi.ar.bits.addr)
+      printf("%d: [AXI4 Bridge-S%d] ar addr=%b\n", DebugTimer(), p(DEVICE_ID).U, io.axi.ar.bits.addr)
     }
     when(io.axi.r.fire) {
-      printf("%d: [AXI4 Bridge-S%d] r  data=%b\n", DebugTimer(), ID.U, io.axi.r.bits.data)
+      printf("%d: [AXI4 Bridge-S%d] r  data=%b\n", DebugTimer(), p(DEVICE_ID).U, io.axi.r.bits.data)
     }
     when(io.a_packet.fire) {
-      printf("%d: [AXI4 Bridge-S%d] a_packet =%b\n", DebugTimer(), ID.U, io.a_packet.bits)
+      printf("%d: [AXI4 Bridge-S%d] a_packet =%b\n", DebugTimer(), p(DEVICE_ID).U, io.a_packet.bits)
     }
     when(io.w_packet.fire) {
-      printf("%d: [AXI4 Bridge-S%d] w_packet =%b\n", DebugTimer(), ID.U, io.w_packet.bits)
+      printf("%d: [AXI4 Bridge-S%d] w_packet =%b\n", DebugTimer(), p(DEVICE_ID).U, io.w_packet.bits)
     }
     when(io.br_packet.fire) {
-      printf("%d: [AXI4 Bridge-S%d] br_packet=%b\n", DebugTimer(), ID.U, io.br_packet.bits)
+      printf("%d: [AXI4 Bridge-S%d] br_packet=%b\n", DebugTimer(), p(DEVICE_ID).U, io.br_packet.bits)
     }
   }
 }
 
-class AXI4SlaveBridgeStage1[B <: AXI4LiteIO](bus_io: B)(val ID: Int)(implicit p: Parameters) extends Module {
+class AXI4SlaveBridgeStage1[B <: AXI4LiteIO](bus_io: B)(implicit p: Parameters) extends Module {
   val io = IO(new Bundle {
     val axi = Flipped(Flipped(bus_io))
     // Response (b/r) channel at VC0, output
@@ -372,7 +372,7 @@ class AXI4SlaveBridgeStage1[B <: AXI4LiteIO](bus_io: B)(val ID: Int)(implicit p:
   // Channel B packet
   io.b_packet.bits := Assemble(AXI4PacketDataWidth(bus_io))(
     AXI4ChannelB2PacketData(io.axi.b.bits).asTypeOf(UInt(AXI4PacketDataWidth(bus_io).W)),
-    ID.U(p(SRC_BITS).W),
+    p(DEVICE_ID).U(p(SRC_BITS).W),
     0.U(p(VC_BITS).W),
     b_packet_dst,
     true.B,
@@ -384,7 +384,7 @@ class AXI4SlaveBridgeStage1[B <: AXI4LiteIO](bus_io: B)(val ID: Int)(implicit p:
   // Channel R packet
   io.r_packet.bits := Assemble(AXI4PacketDataWidth(bus_io))(
     AXI4ChannelR2PacketData(io.axi.r.bits).asTypeOf(UInt(AXI4PacketDataWidth(bus_io).W)),
-    ID.U(p(SRC_BITS).W),
+    p(DEVICE_ID).U(p(SRC_BITS).W),
     0.U(p(VC_BITS).W),
     r_packet_dst,
     true.B,
@@ -433,6 +433,8 @@ class AXI4SlaveBridgeStage2[B <: AXI4LiteIO](bus_io: B)(implicit p: Parameters) 
 }
 
 class AXI4SlaveBridgeWriteBuffer[B <: AXI4LiteIO](bus_io: B)(implicit p: Parameters) extends Module {
+  val WRITE_BUFFER_DEPTH = if (p(PROTOCOL) == "AXI4") p(AXI4_MAX_BURST_LEN) else 1
+
   val io = IO(new Bundle {
     // To stage 1
     val stage1_aw_packet = Decoupled(UInt(AXI4PacketWidth(bus_io).W))
@@ -444,7 +446,7 @@ class AXI4SlaveBridgeWriteBuffer[B <: AXI4LiteIO](bus_io: B)(implicit p: Paramet
 
   // TODO: map master device ID with buffer index, currently using identical mapping
   val buffer = for (i <- 0 until p(NUM_MASTER_DEVICES)) yield {
-    val _buffer = Module(new BasicFIFO(p(WRITE_BUFFER_DEPTH), AXI4PacketWidth(bus_io))())
+    val _buffer = Module(new BasicFIFO(WRITE_BUFFER_DEPTH, AXI4PacketWidth(bus_io))())
     _buffer
   }
 
