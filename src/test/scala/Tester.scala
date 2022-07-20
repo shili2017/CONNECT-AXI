@@ -72,7 +72,7 @@ class NetworkAXI4LiteWrapperTester extends AnyFlatSpec with ChiselScalatestTeste
 
 class NetworkSimpleWrapperTester extends AnyFlatSpec with ChiselScalatestTester {
   // Test simple wrapper with packet width = 72
-  implicit val p: Parameters = (new SimpleConfig).toInstance.alterPartial({ case SIMPLE_PACKET_WIDTH => 72 })
+  implicit val p: Parameters = (new SimpleConfig).toInstance.alterPartial({ case PACKET_WIDTH => 72 })
 
   it should "pass simple test" in {
     val annotation = Seq(

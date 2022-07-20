@@ -16,7 +16,8 @@ class FlitFlowControlSend(implicit p: Parameters) extends Module {
   val send_interface = Module(new FlitSendInterface)
 
   val fifo = for (i <- 0 until p(NUM_VCS)) yield {
-    val _fifo = Module(new InPortFIFO(i))
+    val p_    = p.alterPartial({ case FIFO_VC => i })
+    val _fifo = Module(new InPortFIFO()(p_))
     _fifo
   }
 
@@ -43,7 +44,8 @@ class FlitFlowControlRecv(implicit p: Parameters) extends Module {
   val recv_interface = Module(new FlitRecvInterface)
 
   val fifo = for (i <- 0 until p(NUM_VCS)) yield {
-    val _fifo = Module(new OutPortFIFO(i))
+    val p_    = p.alterPartial({ case FIFO_VC => i })
+    val _fifo = Module(new OutPortFIFO()(p_))
     _fifo
   }
 

@@ -13,7 +13,9 @@ case object FLIT_DATA_WIDTH extends Field[Int]
 case object SRC_BITS extends Field[Int]
 case object DEST_BITS extends Field[Int]
 case object VC_BITS extends Field[Int]
+case object META_WIDTH extends Field[Int]
 case object FLIT_WIDTH extends Field[Int]
+case object PACKET_DATA_WIDTH extends Field[Int]
 
 // CONNECT network parameters, change these values after re-generating the network
 class ConnectConfig
@@ -25,11 +27,13 @@ class ConnectConfig
       case FLIT_BUFFER_DEPTH    => 4
 
       // Induced parameters, DO NOT CHANGE
-      case FLIT_DATA_WIDTH => site(REAL_FLIT_DATA_WIDTH) - log2Up(site(NUM_USER_SEND_PORTS))
-      case SRC_BITS        => log2Up(site(NUM_USER_SEND_PORTS))
-      case DEST_BITS       => log2Up(site(NUM_USER_RECV_PORTS))
-      case VC_BITS         => log2Up(site(NUM_VCS))
-      case FLIT_WIDTH      => site(FLIT_DATA_WIDTH) + site(SRC_BITS) + site(DEST_BITS) + site(VC_BITS) + 2
+      case FLIT_DATA_WIDTH   => site(REAL_FLIT_DATA_WIDTH) - log2Up(site(NUM_USER_SEND_PORTS))
+      case SRC_BITS          => log2Up(site(NUM_USER_SEND_PORTS))
+      case DEST_BITS         => log2Up(site(NUM_USER_RECV_PORTS))
+      case VC_BITS           => log2Up(site(NUM_VCS))
+      case META_WIDTH        => site(SRC_BITS) + site(DEST_BITS) + site(VC_BITS) + 2
+      case FLIT_WIDTH        => site(FLIT_DATA_WIDTH) + site(META_WIDTH)
+      case PACKET_DATA_WIDTH => site(PACKET_WIDTH) - site(META_WIDTH)
     })
 
 case object PROTOCOL extends Field[String]
@@ -37,7 +41,7 @@ case object NUM_MASTER_DEVICES extends Field[Int]
 case object NUM_SLAVE_DEVICES extends Field[Int]
 case object WRITE_INTERLEAVE extends Field[Boolean]
 case object AXI4_MAX_BURST_LEN extends Field[Int]
-case object SIMPLE_PACKET_WIDTH extends Field[Int]
+case object PACKET_WIDTH extends Field[Int]
 
 class AXI4WrapperConfig
     extends Config((site, here, up) => {
@@ -65,10 +69,10 @@ class AXI4StreamWrapperConfig
 
 class SimpleWrapperConfig
     extends Config((site, here, up) => {
-      case PROTOCOL            => "Simple"
-      case NUM_MASTER_DEVICES  => site(NUM_USER_SEND_PORTS)
-      case NUM_SLAVE_DEVICES   => site(NUM_USER_RECV_PORTS)
-      case SIMPLE_PACKET_WIDTH => 80
+      case PROTOCOL           => "Simple"
+      case NUM_MASTER_DEVICES => site(NUM_USER_SEND_PORTS)
+      case NUM_SLAVE_DEVICES  => site(NUM_USER_RECV_PORTS)
+      case PACKET_WIDTH       => 80
     })
 
 case object USE_FIFO_IP extends Field[Boolean]
@@ -96,6 +100,8 @@ class DebugConfig
     })
 
 case object DEVICE_ID extends Field[Int]
+case object FIFO_VC extends Field[Int]
+case object AXI4_BUS_IO extends Field[AXI4LiteIO]
 
 class AXI4Config extends Config(new ConnectConfig ++ new AXI4WrapperConfig ++ new LibraryConfig ++ new DebugConfig)
 

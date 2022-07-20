@@ -8,12 +8,12 @@ class AXI4StreamMasterBridge(implicit p: Parameters) extends Module {
   val io = IO(new Bundle {
     val axi = Flipped(new AXI4StreamIO)
     // T channel at VC0, output
-    val t_packet = Decoupled(UInt(AXI4StreamPacketWidth().W))
+    val t_packet = Decoupled(UInt(p(PACKET_WIDTH).W))
   })
 
   // Channel T packet
-  io.t_packet.bits := Assemble(AXI4StreamPacketDataWidth())(
-    AXI4StreamChannelT2PacketData(io.axi.t.bits).asTypeOf(UInt(AXI4StreamPacketDataWidth().W)),
+  io.t_packet.bits := Assemble(p(PACKET_DATA_WIDTH))(
+    AXI4StreamChannelT2PacketData(io.axi.t.bits).asTypeOf(UInt(p(PACKET_DATA_WIDTH).W)),
     p(DEVICE_ID).U(p(SRC_BITS).W),
     0.U(p(VC_BITS).W),
     GetDestFromAXI4StreamChannelT(io.axi.t.bits),
@@ -38,7 +38,7 @@ class AXI4StreamSlaveBridge(implicit p: Parameters) extends Module {
   val io = IO(new Bundle {
     val axi = new AXI4StreamIO
     // T channel at VC0, input
-    val t_packet = Flipped(Decoupled(UInt(AXI4StreamPacketWidth().W)))
+    val t_packet = Flipped(Decoupled(UInt(p(PACKET_WIDTH).W)))
   })
 
   // Channel W packet

@@ -6,15 +6,17 @@ import chipsalliance.rocketchip.config._
 
 class NetworkSimpleWrapper(implicit p: Parameters) extends Module {
   val io = IO(new Bundle {
-    val send = Vec(p(NUM_USER_SEND_PORTS), Flipped(Decoupled(UInt(p(SIMPLE_PACKET_WIDTH).W))))
-    val recv = Vec(p(NUM_USER_RECV_PORTS), Decoupled(UInt(p(SIMPLE_PACKET_WIDTH).W)))
+    val send = Vec(p(NUM_USER_SEND_PORTS), Flipped(Decoupled(UInt(p(PACKET_WIDTH).W))))
+    val recv = Vec(p(NUM_USER_RECV_PORTS), Decoupled(UInt(p(PACKET_WIDTH).W)))
   })
 
   val network = Module(new Network)
 
   for (i <- 0 until p(NUM_USER_SEND_PORTS)) {
-    val p_                = p.alterPartial({ case DEVICE_ID => i })
-    val serializer        = Module(new FlitSerializer(p(SIMPLE_PACKET_WIDTH), p(FLIT_WIDTH), 0)(p_))
+    val p_ = p.alterPartial({
+      case DEVICE_ID => i
+    })
+    val serializer        = Module(new FlitSerializer()(p_.alterPartial({ case FIFO_VC => 0 })))
     val flow_control_send = Module(new FlitFlowControlSend)
     serializer.io.in_packet      <> io.send(i)
     serializer.io.clock_noc      := clock
@@ -27,8 +29,10 @@ class NetworkSimpleWrapper(implicit p: Parameters) extends Module {
   }
 
   for (i <- 0 until p(NUM_USER_RECV_PORTS)) {
-    val p_                = p.alterPartial({ case DEVICE_ID => i })
-    val deserializer      = Module(new FlitDeserializer(p(FLIT_WIDTH), p(SIMPLE_PACKET_WIDTH), 0)(p_))
+    val p_ = p.alterPartial({
+      case DEVICE_ID => i
+    })
+    val deserializer      = Module(new FlitDeserializer()(p_.alterPartial({ case FIFO_VC => 0 })))
     val flow_control_recv = Module(new FlitFlowControlRecv)
     io.recv(i)                <> deserializer.io.out_packet
     deserializer.io.clock_noc := clock

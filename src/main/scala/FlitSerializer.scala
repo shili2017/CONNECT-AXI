@@ -4,13 +4,10 @@ import chisel3._
 import chisel3.util._
 import chipsalliance.rocketchip.config._
 
-class FlitSerializer(
-  val IN_PACKET_WIDTH: Int,
-  val OUT_FLIT_WIDTH:  Int,
-  val VC:              Int
-)(
-  implicit p: Parameters)
-    extends Module {
+class FlitSerializer(implicit p: Parameters) extends Module {
+  val IN_PACKET_WIDTH = p(PACKET_WIDTH)
+  val OUT_FLIT_WIDTH  = p(FLIT_WIDTH)
+
   val io = IO(new Bundle {
     val in_packet = Flipped(Decoupled(UInt(IN_PACKET_WIDTH.W)))
     val out_flit  = Decoupled(UInt(OUT_FLIT_WIDTH.W))
@@ -34,9 +31,8 @@ class FlitSerializer(
     packet <> io.in_packet
   }
 
-  val META_WIDTH           = 2 + p(DEST_BITS) + p(VC_BITS) + p(SRC_BITS)
-  val IN_PACKET_DATA_WIDTH = IN_PACKET_WIDTH - META_WIDTH
-  val OUT_FLIT_DATA_WIDTH  = OUT_FLIT_WIDTH - META_WIDTH
+  val IN_PACKET_DATA_WIDTH = IN_PACKET_WIDTH - p(META_WIDTH)
+  val OUT_FLIT_DATA_WIDTH  = OUT_FLIT_WIDTH - p(META_WIDTH)
   val LEN                  = (IN_PACKET_DATA_WIDTH + OUT_FLIT_DATA_WIDTH - 1) / OUT_FLIT_DATA_WIDTH
 
   withClock(io.clock_noc) {
@@ -62,7 +58,7 @@ class FlitSerializer(
       }
     }
 
-    val meta_reg = RegInit(0.U(META_WIDTH.W))
+    val meta_reg = RegInit(0.U(p(META_WIDTH).W))
     val data_reg = RegInit(0.U(IN_PACKET_DATA_WIDTH.W))
     when(packet.fire) {
       meta_reg := packet.bits(IN_PACKET_WIDTH - 1, IN_PACKET_DATA_WIDTH)
@@ -78,9 +74,9 @@ class FlitSerializer(
     // Out flit output signals
     io.out_flit.valid := (state === s_send)
     io.out_flit.bits := Cat(
-      meta_reg(META_WIDTH - 1).asUInt,
-      (meta_reg(META_WIDTH - 2) && (len === (LEN - 1).U)).asUInt, // update tail
-      meta_reg(META_WIDTH - 3, 0),
+      meta_reg(p(META_WIDTH) - 1).asUInt,
+      (meta_reg(p(META_WIDTH) - 2) && (len === (LEN - 1).U)).asUInt, // update tail
+      meta_reg(p(META_WIDTH) - 3, 0),
       data_reg(OUT_FLIT_DATA_WIDTH - 1, 0)
     )
 
@@ -95,7 +91,7 @@ class FlitSerializer(
           "%d: [Serializer   %d] vc=%d out_flit=%b (%d/%d)\n",
           DebugTimer(),
           p(DEVICE_ID).U,
-          VC.U,
+          p(FIFO_VC).U,
           io.out_flit.bits,
           cnt + 1.U,
           LEN.U
@@ -105,13 +101,10 @@ class FlitSerializer(
   }
 }
 
-class FlitDeserializer(
-  val IN_FLIT_WIDTH:    Int,
-  val OUT_PACKET_WIDTH: Int,
-  val VC:               Int
-)(
-  implicit p: Parameters)
-    extends Module {
+class FlitDeserializer(implicit p: Parameters) extends Module {
+  val IN_FLIT_WIDTH    = p(FLIT_WIDTH)
+  val OUT_PACKET_WIDTH = p(PACKET_WIDTH)
+
   val io = IO(new Bundle {
     val in_flit    = Flipped(Decoupled(UInt(IN_FLIT_WIDTH.W)))
     val out_packet = Decoupled(UInt(OUT_PACKET_WIDTH.W))
@@ -141,9 +134,8 @@ class FlitDeserializer(
     io.out_packet <> packet
   }
 
-  val META_WIDTH            = 2 + p(DEST_BITS) + p(VC_BITS) + p(SRC_BITS)
-  val IN_FLIT_DATA_WIDTH    = IN_FLIT_WIDTH - META_WIDTH
-  val OUT_PACKET_DATA_WIDTH = OUT_PACKET_WIDTH - META_WIDTH
+  val IN_FLIT_DATA_WIDTH    = IN_FLIT_WIDTH - p(META_WIDTH)
+  val OUT_PACKET_DATA_WIDTH = OUT_PACKET_WIDTH - p(META_WIDTH)
   val LEN                   = (OUT_PACKET_DATA_WIDTH + IN_FLIT_DATA_WIDTH - 1) / IN_FLIT_DATA_WIDTH
 
   withClock(io.clock_noc) {
@@ -189,7 +181,7 @@ class FlitDeserializer(
     }
 
     // In flit register for each source
-    val flit_meta_reg = RegInit(VecInit(Seq.fill(p(NUM_USER_SEND_PORTS))(0.U(META_WIDTH.W))))
+    val flit_meta_reg = RegInit(VecInit(Seq.fill(p(NUM_USER_SEND_PORTS))(0.U(p(META_WIDTH).W))))
     val flit_data_reg = Wire(Vec(p(NUM_USER_SEND_PORTS), UInt(OUT_PACKET_DATA_WIDTH.W)))
     val flit_data_reg_vec = RegInit(
       VecInit(Seq.fill(p(NUM_USER_SEND_PORTS))(VecInit(Seq.fill(LEN)(0.U(IN_FLIT_DATA_WIDTH.W)))))
@@ -220,14 +212,14 @@ class FlitDeserializer(
 
     if (p(DEBUG_DESERIALIZER)) {
       when(io.in_flit.fire) {
-        printf("%d: [Deserializer %d] vc=%d  in_flit=%b\n", DebugTimer(), p(DEVICE_ID).U, VC.U, io.in_flit.bits)
+        printf("%d: [Deserializer %d] vc=%d  in_flit=%b\n", DebugTimer(), p(DEVICE_ID).U, p(FIFO_VC).U, io.in_flit.bits)
       }
       when(packet.fire) {
         printf(
           "%d: [Deserializer %d] vc=%d out_packet=%b\n",
           DebugTimer(),
           p(DEVICE_ID).U,
-          VC.U,
+          p(FIFO_VC).U,
           packet.bits
         )
       }

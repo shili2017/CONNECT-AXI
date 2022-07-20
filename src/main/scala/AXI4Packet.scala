@@ -12,27 +12,21 @@ object AXI4ChannelID {
   val R  = 4.U(3.W)
 }
 
-object AXI4PacketDataWidth {
-  def apply[B <: AXI4LiteIO](bus_io: B): Int = List(
-    bus_io.aw.bits.getWidth,
-    bus_io.w.bits.getWidth,
-    bus_io.b.bits.getWidth,
-    bus_io.ar.bits.getWidth,
-    bus_io.r.bits.getWidth
-  ).max + AXI4ChannelID.AW.getWidth
-}
-
 object AXI4PacketWidth {
-  def apply[B <: AXI4LiteIO](bus_io: B)(implicit p: Parameters): Int =
-    AXI4PacketDataWidth(bus_io) + p(SRC_BITS) + p(DEST_BITS) + p(VC_BITS) + 2
-}
-
-object AXI4StreamPacketDataWidth {
-  def apply(): Int = (new AXI4StreamIO).t.bits.getWidth
+  def apply()(implicit p: Parameters): Int = {
+    val bus_io = if (p(PROTOCOL) == "AXI4") new AXI4IO else new AXI4LiteIO
+    List(
+      bus_io.aw.bits.getWidth,
+      bus_io.w.bits.getWidth,
+      bus_io.b.bits.getWidth,
+      bus_io.ar.bits.getWidth,
+      bus_io.r.bits.getWidth
+    ).max + AXI4ChannelID.AW.getWidth + p(META_WIDTH)
+  }
 }
 
 object AXI4StreamPacketWidth {
-  def apply()(implicit p: Parameters): Int = AXI4StreamPacketDataWidth() + p(SRC_BITS) + p(DEST_BITS) + p(VC_BITS) + 2
+  def apply()(implicit p: Parameters): Int = (new AXI4StreamIO).t.bits.getWidth + p(META_WIDTH)
 }
 
 // Customized by user
@@ -51,16 +45,16 @@ object GetDestFromAXI4StreamChannelT {
 }
 
 object GetChannelIDFromAXI4Packet {
-  def apply[B <: AXI4LiteIO](bus_io: B)(packet: UInt)(implicit p: Parameters): UInt = {
-    assert(packet.getWidth == AXI4PacketWidth(bus_io))
+  def apply(packet: UInt)(implicit p: Parameters): UInt = {
+    assert(packet.getWidth == p(PACKET_WIDTH))
     packet(2, 0)
   }
 }
 
 object GetSrcFromPacket {
-  def apply[B <: AXI4LiteIO](bus_io: B)(packet: UInt)(implicit p: Parameters): UInt = {
-    assert(packet.getWidth == AXI4PacketWidth(bus_io))
-    packet(AXI4PacketDataWidth(bus_io) + p(SRC_BITS) - 1, AXI4PacketDataWidth(bus_io))
+  def apply(packet: UInt)(implicit p: Parameters): UInt = {
+    assert(packet.getWidth == p(PACKET_WIDTH))
+    packet(p(PACKET_WIDTH) - p(META_WIDTH) + p(SRC_BITS) - 1, p(PACKET_WIDTH) - p(META_WIDTH))
   }
 }
 
@@ -151,9 +145,9 @@ object AXI4ChannelR2PacketData {
 }
 
 object Packet2AXI4ChannelA {
-  def apply[B <: AXI4LiteIO](bus_io: B)(packet: UInt)(implicit p: Parameters): AXI4LiteChannelA = {
-    assert(packet.getWidth == AXI4PacketWidth(bus_io))
-    if (bus_io.getClass == classOf[AXI4IO]) {
+  def apply(packet: UInt)(implicit p: Parameters): AXI4LiteChannelA = {
+    assert(packet.getWidth == p(PACKET_WIDTH))
+    if (p(PROTOCOL) == "AXI4") {
       val a = Wire(new AXI4ChannelA)
       a.id := packet(
         31 + AXI4Parameters.AXI4AddrWidth + AXI4Parameters.AXI4IdWidth,
@@ -179,9 +173,9 @@ object Packet2AXI4ChannelA {
 }
 
 object Packet2AXI4ChannelW {
-  def apply[B <: AXI4LiteIO](bus_io: B)(packet: UInt)(implicit p: Parameters): AXI4LiteChannelW = {
-    assert(packet.getWidth == AXI4PacketWidth(bus_io))
-    if (bus_io.getClass == classOf[AXI4IO]) {
+  def apply(packet: UInt)(implicit p: Parameters): AXI4LiteChannelW = {
+    assert(packet.getWidth == p(PACKET_WIDTH))
+    if (p(PROTOCOL) == "AXI4") {
       val w = Wire(new AXI4ChannelW)
       w.strb := packet(
         3 + AXI4Parameters.AXI4DataWidth + AXI4Parameters.AXI4DataWidth / 8,
@@ -203,9 +197,9 @@ object Packet2AXI4ChannelW {
 }
 
 object Packet2AXI4ChannelB {
-  def apply[B <: AXI4LiteIO](bus_io: B)(packet: UInt)(implicit p: Parameters): AXI4LiteChannelB = {
-    assert(packet.getWidth == AXI4PacketWidth(bus_io))
-    if (bus_io.getClass == classOf[AXI4IO]) {
+  def apply(packet: UInt)(implicit p: Parameters): AXI4LiteChannelB = {
+    assert(packet.getWidth == p(PACKET_WIDTH))
+    if (p(PROTOCOL) == "AXI4") {
       val b = Wire(new AXI4ChannelB)
       b.id   := packet(4 + AXI4Parameters.AXI4IdWidth, 5)
       b.resp := packet(4, 3)
@@ -219,9 +213,9 @@ object Packet2AXI4ChannelB {
 }
 
 object Packet2AXI4ChannelR {
-  def apply[B <: AXI4LiteIO](bus_io: B)(packet: UInt)(implicit p: Parameters): AXI4LiteChannelR = {
-    assert(packet.getWidth == AXI4PacketWidth(bus_io))
-    if (bus_io.getClass == classOf[AXI4IO]) {
+  def apply(packet: UInt)(implicit p: Parameters): AXI4LiteChannelR = {
+    assert(packet.getWidth == p(PACKET_WIDTH))
+    if (p(PROTOCOL) == "AXI4") {
       val r = Wire(new AXI4ChannelR)
       r.id := packet(
         5 + AXI4Parameters.AXI4DataWidth + AXI4Parameters.AXI4IdWidth,

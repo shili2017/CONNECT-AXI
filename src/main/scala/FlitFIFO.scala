@@ -60,7 +60,7 @@ class BasicFIFO(
   }
 }
 
-class InPortFIFO(VC: Int)(implicit p: Parameters) extends Module {
+class InPortFIFO(implicit p: Parameters) extends Module {
   val io = IO(new Bundle {
     // Device
     val device_flit = Flipped(Decoupled(UInt(p(FLIT_WIDTH).W)))
@@ -74,7 +74,7 @@ class InPortFIFO(VC: Int)(implicit p: Parameters) extends Module {
 
   // Check whether incoming credit matches VC
   when(io.network_credit.fire) {
-    assert(io.network_credit.bits === VC.U)
+    assert(io.network_credit.bits === p(FIFO_VC).U)
   }
 
   // Credit
@@ -92,7 +92,7 @@ class InPortFIFO(VC: Int)(implicit p: Parameters) extends Module {
   io.network_flit.bits  := fifo.io.deq.bits
 }
 
-class OutPortFIFO(VC: Int)(implicit p: Parameters) extends Module {
+class OutPortFIFO(implicit p: Parameters) extends Module {
   val io = IO(new Bundle {
     // Device
     val device_flit = Decoupled(UInt(p(FLIT_WIDTH).W)) // Output to device
@@ -110,7 +110,7 @@ class OutPortFIFO(VC: Int)(implicit p: Parameters) extends Module {
   fifo.io.deq.ready    := io.device_flit.ready && io.network_credit.ready
 
   // Credit
-  io.network_credit.bits  := VC.U(p(VC_BITS).W)
+  io.network_credit.bits  := p(FIFO_VC).U(p(VC_BITS).W)
   io.network_credit.valid := io.device_flit.fire
 
   // Flit input from network
