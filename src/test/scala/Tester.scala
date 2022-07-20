@@ -4,34 +4,36 @@ import chisel3._
 import chisel3.util._
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
+import chipsalliance.rocketchip.config._
 
 class NetworkAXI4WrapperTester extends AnyFlatSpec with ChiselScalatestTester {
+  implicit val p: Parameters = (new AXI4Config).toInstance
+
   it should "pass AXI4 test" in {
     val annotation = Seq(
       VerilatorBackendAnnotation,
       WriteVcdAnnotation
     )
 
-    val TEST_LEN = 2
+    val TEST_LEN = 16
 
     test(new AXI4Testbench(TEST_LEN)).withAnnotations(annotation) { tb =>
       tb.clock.step()
-      for (i <- 0 until Config.NUM_MASTER_DEVICES) {
+      for (i <- 0 until p(NUM_MASTER_DEVICES)) {
         tb.io.start_write(i).poke(false)
         tb.io.start_read(i).poke(false)
-        tb.io.target_addr(i).poke((i + Config.NUM_MASTER_DEVICES).U)
+        tb.io.target_addr(i).poke(2.U)
       }
       tb.clock.step()
       tb.io.start_write(0).poke(true)
       tb.clock.step()
       tb.io.start_write(0).poke(false)
-      tb.io.start_read(1).poke(true)
+      tb.io.start_write(1).poke(true)
       tb.clock.step()
-      tb.io.start_read(1).poke(false)
+      tb.io.start_write(1).poke(false)
       tb.clock.step(200)
 
       for (i <- 0 until TEST_LEN) {
-        tb.io.master_buffer_peek(1)(i).expect(i)
         tb.io.slave_buffer_peek(0)(i).expect((BigInt("deadbeefdeadbeef", 16) + i))
       }
     }
@@ -39,18 +41,19 @@ class NetworkAXI4WrapperTester extends AnyFlatSpec with ChiselScalatestTester {
 }
 
 class NetworkAXI4LiteWrapperTester extends AnyFlatSpec with ChiselScalatestTester {
+  implicit val p: Parameters = (new AXI4LiteConfig).toInstance
+
   it should "pass AXI4-Lite test" in {
     val annotation = Seq(
-      VerilatorBackendAnnotation,
-      WriteVcdAnnotation
+      VerilatorBackendAnnotation
     )
 
     test(new AXI4LiteTestbench).withAnnotations(annotation) { tb =>
       tb.clock.step()
-      for (i <- 0 until Config.NUM_MASTER_DEVICES) {
+      for (i <- 0 until p(NUM_MASTER_DEVICES)) {
         tb.io.start_write(i).poke(false)
         tb.io.start_read(i).poke(false)
-        tb.io.target_addr(i).poke((i + Config.NUM_MASTER_DEVICES).U)
+        tb.io.target_addr(i).poke((i + p(NUM_MASTER_DEVICES)).U)
       }
       tb.clock.step()
       tb.io.start_write(0).poke(true)
@@ -68,22 +71,25 @@ class NetworkAXI4LiteWrapperTester extends AnyFlatSpec with ChiselScalatestTeste
 }
 
 class NetworkSimpleWrapperTester extends AnyFlatSpec with ChiselScalatestTester {
+  // Test simple wrapper with packet width = 72
+  implicit val p: Parameters = (new SimpleConfig).toInstance.alterPartial({ case PACKET_WIDTH => 72 })
+
   it should "pass simple test" in {
     val annotation = Seq(
       VerilatorBackendAnnotation,
       WriteVcdAnnotation
     )
 
-    test(new NetworkSimpleWrapper(72)).withAnnotations(annotation) { tb =>
+    test(new NetworkSimpleWrapper).withAnnotations(annotation) { tb =>
       val packet_0_2 = BigInt("e01234567812345678", 16)
       val packet_1_3 = BigInt("f1deadbeefdeadbeef", 16)
 
       tb.clock.step()
-      for (i <- 0 until Config.NUM_USER_SEND_PORTS) {
+      for (i <- 0 until p(NUM_USER_SEND_PORTS)) {
         tb.io.send(i).bits.poke(0.U)
         tb.io.send(i).valid.poke(false.B)
       }
-      for (i <- 0 until Config.NUM_USER_RECV_PORTS) {
+      for (i <- 0 until p(NUM_USER_RECV_PORTS)) {
         tb.io.recv(i).ready.poke(false.B)
       }
       tb.clock.step()
@@ -103,6 +109,40 @@ class NetworkSimpleWrapperTester extends AnyFlatSpec with ChiselScalatestTester 
       tb.io.recv(2).valid.expect(true)
       tb.io.recv(3).bits.expect(packet_1_3)
       tb.io.recv(3).valid.expect(true)
+    }
+  }
+}
+
+class NetworkAXI4StreamWrapperTester extends AnyFlatSpec with ChiselScalatestTester {
+  implicit val p: Parameters = (new AXI4StreamConfig).toInstance
+
+  it should "pass AXI4-Stream test" in {
+    val annotation = Seq(
+      VerilatorBackendAnnotation,
+      WriteVcdAnnotation
+    )
+
+    val TEST_LEN = 16
+
+    test(new AXI4StreamTestbench(TEST_LEN)).withAnnotations(annotation) { tb =>
+      tb.clock.step()
+      for (i <- 0 until p(NUM_MASTER_DEVICES)) {
+        tb.io.start(i).poke(false)
+        tb.io.target_dest(i).poke(((i + p(NUM_MASTER_DEVICES) / 2) % p(NUM_MASTER_DEVICES)).U)
+      }
+      tb.clock.step()
+      tb.io.start(0).poke(true)
+      tb.clock.step()
+      tb.io.start(0).poke(false)
+      tb.io.start(1).poke(true)
+      tb.clock.step()
+      tb.io.start(1).poke(false)
+      tb.clock.step(200)
+
+      for (i <- 0 until TEST_LEN) {
+        tb.io.slave_buffer_peek(2)(i).expect((BigInt("deadbeefdeadbeef", 16) + i))
+        tb.io.slave_buffer_peek(3)(i).expect((BigInt("deadbeefdeadbeef", 16) + i))
+      }
     }
   }
 }

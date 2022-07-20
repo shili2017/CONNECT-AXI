@@ -2,11 +2,12 @@ package connect_axi
 
 import chisel3._
 import chisel3.util._
+import chipsalliance.rocketchip.config._
 
-class FlitFlowControlSend extends Module with Config {
+class FlitFlowControlSend(implicit p: Parameters) extends Module {
   val io = IO(new Bundle {
     // Device
-    val flit = Vec(NUM_VCS, Flipped(Decoupled(UInt(FLIT_WIDTH.W))))
+    val flit = Vec(p(NUM_VCS), Flipped(Decoupled(UInt(p(FLIT_WIDTH).W))))
     // Network
     val send = Flipped(new NetworkSendInterface)
   })
@@ -14,12 +15,13 @@ class FlitFlowControlSend extends Module with Config {
   val hub            = Module(new FlitHubNTo1)
   val send_interface = Module(new FlitSendInterface)
 
-  val fifo = for (i <- 0 until NUM_VCS) yield {
-    val _fifo = Module(new InPortFIFO(i))
+  val fifo = for (i <- 0 until p(NUM_VCS)) yield {
+    val p_    = p.alterPartial({ case FIFO_VC => i })
+    val _fifo = Module(new InPortFIFO()(p_))
     _fifo
   }
 
-  for (i <- 0 until NUM_VCS) {
+  for (i <- 0 until p(NUM_VCS)) {
     fifo(i).io.device_flit  <> io.flit(i)
     hub.io.device_flit(i)   <> fifo(i).io.network_flit
     hub.io.device_credit(i) <> fifo(i).io.network_credit
@@ -30,10 +32,10 @@ class FlitFlowControlSend extends Module with Config {
   io.send                      <> send_interface.io.send
 }
 
-class FlitFlowControlRecv extends Module with Config {
+class FlitFlowControlRecv(implicit p: Parameters) extends Module {
   val io = IO(new Bundle {
     // Device
-    val flit = Vec(NUM_VCS, Decoupled(UInt(FLIT_WIDTH.W)))
+    val flit = Vec(p(NUM_VCS), Decoupled(UInt(p(FLIT_WIDTH).W)))
     // Network
     val recv = Flipped(new NetworkRecvInterface)
   })
@@ -41,12 +43,13 @@ class FlitFlowControlRecv extends Module with Config {
   val hub            = Module(new FlitHub1ToN)
   val recv_interface = Module(new FlitRecvInterface)
 
-  val fifo = for (i <- 0 until NUM_VCS) yield {
-    val _fifo = Module(new OutPortFIFO(i))
+  val fifo = for (i <- 0 until p(NUM_VCS)) yield {
+    val p_    = p.alterPartial({ case FIFO_VC => i })
+    val _fifo = Module(new OutPortFIFO()(p_))
     _fifo
   }
 
-  for (i <- 0 until NUM_VCS) {
+  for (i <- 0 until p(NUM_VCS)) {
     io.flit(i)                <> fifo(i).io.device_flit
     fifo(i).io.network_flit   <> hub.io.device_flit(i)
     fifo(i).io.network_credit <> hub.io.device_credit(i)
