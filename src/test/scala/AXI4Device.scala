@@ -2,6 +2,7 @@ package connect_axi
 
 import chisel3._
 import chisel3.util._
+import chipsalliance.rocketchip.config._
 
 class AXI4MasterDevice(val ID: Int, val LEN: Int) extends Module {
   val io = IO(new Bundle {
@@ -176,22 +177,22 @@ class AXI4SlaveDevice(val ID: Int, val LEN: Int) extends Module {
   io.axi.r.valid     := (state === s_rdata)
 }
 
-class AXI4Testbench(LEN: Int) extends Module with Config {
+class AXI4Testbench(LEN: Int)(implicit p: Parameters) extends Module {
   val io = IO(new Bundle {
-    val start_write        = Vec(NUM_MASTER_DEVICES, Input(Bool()))
-    val start_read         = Vec(NUM_MASTER_DEVICES, Input(Bool()))
-    val target_addr        = Vec(NUM_MASTER_DEVICES, Input(UInt(AXI4Parameters.AXI4AddrWidth.W)))
-    val master_buffer_peek = Vec(NUM_MASTER_DEVICES, Vec(LEN, Output(UInt(AXI4Parameters.AXI4DataWidth.W))))
-    val slave_buffer_peek  = Vec(NUM_SLAVE_DEVICES, Vec(LEN, Output(UInt(AXI4Parameters.AXI4DataWidth.W))))
+    val start_write        = Vec(p(NUM_MASTER_DEVICES), Input(Bool()))
+    val start_read         = Vec(p(NUM_MASTER_DEVICES), Input(Bool()))
+    val target_addr        = Vec(p(NUM_MASTER_DEVICES), Input(UInt(AXI4Parameters.AXI4AddrWidth.W)))
+    val master_buffer_peek = Vec(p(NUM_MASTER_DEVICES), Vec(LEN, Output(UInt(AXI4Parameters.AXI4DataWidth.W))))
+    val slave_buffer_peek  = Vec(p(NUM_SLAVE_DEVICES), Vec(LEN, Output(UInt(AXI4Parameters.AXI4DataWidth.W))))
   })
 
-  val dut = Module(new NetworkAXI4Wrapper("AXI4"))
+  val dut = Module(new NetworkAXI4Wrapper)
 
-  val master = for (i <- 0 until NUM_MASTER_DEVICES) yield {
+  val master = for (i <- 0 until p(NUM_MASTER_DEVICES)) yield {
     val device = Module(new AXI4MasterDevice(i, LEN))
     device
   }
-  for (i <- 0 until NUM_MASTER_DEVICES) {
+  for (i <- 0 until p(NUM_MASTER_DEVICES)) {
     master(i).io.axi         <> dut.io.master(i)
     master(i).io.start_write := io.start_write(i)
     master(i).io.start_read  := io.start_read(i)
@@ -199,11 +200,11 @@ class AXI4Testbench(LEN: Int) extends Module with Config {
     io.master_buffer_peek(i) := master(i).io.buffer_peek
   }
 
-  val slave = for (i <- 0 until NUM_SLAVE_DEVICES) yield {
-    val device = Module(new AXI4SlaveDevice(i + NUM_MASTER_DEVICES, LEN))
+  val slave = for (i <- 0 until p(NUM_SLAVE_DEVICES)) yield {
+    val device = Module(new AXI4SlaveDevice(i + p(NUM_MASTER_DEVICES), LEN))
     device
   }
-  for (i <- 0 until NUM_SLAVE_DEVICES) {
+  for (i <- 0 until p(NUM_SLAVE_DEVICES)) {
     slave(i).io.axi         <> dut.io.slave(i)
     io.slave_buffer_peek(i) := slave(i).io.buffer_peek
   }
