@@ -98,6 +98,18 @@ class FlitSerializer(implicit p: Parameters) extends Module {
         )
       }
     }
+  } // End clock_noc domain
+
+  if (p(DEBUG_SERIALIZER)) {
+    when(io.in_packet.fire) {
+      printf(
+        "%d: [Serializer   %d] vc=%d in_packet=%b\n",
+        DebugTimer(),
+        p(DEVICE_ID).U,
+        p(FIFO_VC).U,
+        io.in_packet.bits
+      )
+    }
   }
 }
 
@@ -124,12 +136,6 @@ class FlitDeserializer(implicit p: Parameters) extends Module {
     fifo.io.rdreq       := io.out_packet.ready
     io.out_packet.bits  := fifo.io.q
     io.out_packet.valid := !fifo.io.rdempty
-    val wrusedw = Wire(UInt(2.W))
-    val rdusedw = Wire(UInt(2.W))
-    dontTouch(wrusedw)
-    dontTouch(rdusedw)
-    wrusedw := fifo.io.wrusedw
-    rdusedw := fifo.io.rdusedw
   } else {
     io.out_packet <> packet
   }
@@ -214,15 +220,18 @@ class FlitDeserializer(implicit p: Parameters) extends Module {
       when(io.in_flit.fire) {
         printf("%d: [Deserializer %d] vc=%d  in_flit=%b\n", DebugTimer(), p(DEVICE_ID).U, p(FIFO_VC).U, io.in_flit.bits)
       }
-      when(packet.fire) {
-        printf(
-          "%d: [Deserializer %d] vc=%d out_packet=%b\n",
-          DebugTimer(),
-          p(DEVICE_ID).U,
-          p(FIFO_VC).U,
-          packet.bits
-        )
-      }
+    }
+  } // End clock_noc domain
+
+  if (p(DEBUG_DESERIALIZER)) {
+    when(io.out_packet.fire) {
+      printf(
+        "%d: [Deserializer %d] vc=%d out_packet=%b\n",
+        DebugTimer(),
+        p(DEVICE_ID).U,
+        p(FIFO_VC).U,
+        io.out_packet.bits
+      )
     }
   }
 }

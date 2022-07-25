@@ -12,8 +12,9 @@ class NetworkAXI4StreamWrapper(implicit p: Parameters) extends Module {
   })
 
   val io = IO(new Bundle {
-    val master = Vec(p_(NUM_MASTER_DEVICES), Flipped(new AXI4StreamIO))
-    val slave  = Vec(p_(NUM_SLAVE_DEVICES), new AXI4StreamIO)
+    val master    = Vec(p_(NUM_MASTER_DEVICES), Flipped(new AXI4StreamIO))
+    val slave     = Vec(p_(NUM_SLAVE_DEVICES), new AXI4StreamIO)
+    val clock_noc = Input(Clock())
   })
 
   // Each AXI4-Stream master device requires a send port
@@ -23,6 +24,7 @@ class NetworkAXI4StreamWrapper(implicit p: Parameters) extends Module {
   assert(p_(NUM_SLAVE_DEVICES) == p_(NUM_USER_RECV_PORTS))
 
   val simple_wrapper = Module(new NetworkSimpleWrapper()(p_))
+  simple_wrapper.io.clock_noc := io.clock_noc
 
   for (i <- 0 until p_(NUM_MASTER_DEVICES)) {
     val bridge = Module(new AXI4StreamMasterBridge()(p_.alterPartial({

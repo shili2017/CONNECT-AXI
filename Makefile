@@ -6,7 +6,7 @@ CHISEL_SRC = $(SRC_DIR)/main/scala/*.scala
 
 PROTOCOL ?= AXI4
 
-all:  $(CHISEL_SRC)
+all: $(CHISEL_SRC)
 	@mkdir -p $(BUILD_DIR)
 	sbt "run $(PROTOCOL) -td $(BUILD_DIR)"
 

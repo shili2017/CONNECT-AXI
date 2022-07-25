@@ -13,8 +13,9 @@ class NetworkAXI4Wrapper(implicit p: Parameters) extends Module {
   })
 
   val io = IO(new Bundle {
-    val master = Vec(p_(NUM_MASTER_DEVICES), Flipped(p_(AXI4_BUS_IO)))
-    val slave  = Vec(p_(NUM_SLAVE_DEVICES), p_(AXI4_BUS_IO))
+    val master    = Vec(p_(NUM_MASTER_DEVICES), Flipped(p_(AXI4_BUS_IO)))
+    val slave     = Vec(p_(NUM_SLAVE_DEVICES), p_(AXI4_BUS_IO))
+    val clock_noc = Input(Clock())
   })
 
   // Each AXI4 device need to have a send port and a recv port
@@ -42,6 +43,7 @@ class NetworkAXI4Wrapper(implicit p: Parameters) extends Module {
   }
 
   val network = Module(new Network)
+  network.clock := io.clock_noc
 
   for (i <- 0 until p_(NUM_MASTER_DEVICES)) {
     val p__ = p_.alterPartial({
@@ -56,11 +58,13 @@ class NetworkAXI4Wrapper(implicit p: Parameters) extends Module {
 
     bridge.io.axi                      <> io.master(i)
     serializer_a.io.in_packet          <> bridge.io.a_packet
-    serializer_a.io.clock_noc          := clock
+    serializer_a.io.clock_noc          := io.clock_noc
     serializer_w.io.in_packet          <> bridge.io.w_packet
-    serializer_w.io.clock_noc          := clock
+    serializer_w.io.clock_noc          := io.clock_noc
     deserializer_br.io.out_packet      <> bridge.io.br_packet
-    deserializer_br.io.clock_noc       := clock
+    deserializer_br.io.clock_noc       := io.clock_noc
+    flow_control_send.clock            := io.clock_noc
+    flow_control_recv.clock            := io.clock_noc
     flow_control_send.io.flit(2)       <> serializer_a.io.out_flit
     flow_control_send.io.flit(1)       <> serializer_w.io.out_flit
     flow_control_send.io.flit(0).bits  := 0.U
@@ -85,11 +89,13 @@ class NetworkAXI4Wrapper(implicit p: Parameters) extends Module {
 
     bridge.io.axi                      <> io.slave(i - p(NUM_MASTER_DEVICES))
     deserializer_a.io.out_packet       <> bridge.io.a_packet
-    deserializer_a.io.clock_noc        := clock
+    deserializer_a.io.clock_noc        := io.clock_noc
     deserializer_w.io.out_packet       <> bridge.io.w_packet
-    deserializer_w.io.clock_noc        := clock
+    deserializer_w.io.clock_noc        := io.clock_noc
     serializer_br.io.in_packet         <> bridge.io.br_packet
-    serializer_br.io.clock_noc         := clock
+    serializer_br.io.clock_noc         := io.clock_noc
+    flow_control_send.clock            := io.clock_noc
+    flow_control_recv.clock            := io.clock_noc
     flow_control_send.io.flit(2).bits  := 0.U
     flow_control_send.io.flit(2).valid := false.B
     flow_control_send.io.flit(1).bits  := 0.U
@@ -100,5 +106,6 @@ class NetworkAXI4Wrapper(implicit p: Parameters) extends Module {
     flow_control_recv.io.flit(0).ready := false.B
     network.io.send(i)                 <> flow_control_send.io.send
     network.io.recv(i)                 <> flow_control_recv.io.recv
+
   }
 }
