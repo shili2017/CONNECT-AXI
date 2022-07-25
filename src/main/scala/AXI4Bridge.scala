@@ -29,7 +29,7 @@ class AXI4MasterBridge(implicit p: Parameters) extends Module {
   io.a_packet            <> stage2.io.out_a_packet
 
   // Debug
-  if (p(DEBUG_AXI4_BRIDGE)) {
+  if (p(DEBUG_BRIDGE)) {
     when(io.axi.aw.fire) {
       printf("%d: [AXI4 Bridge-M%d] aw addr=%b\n", DebugTimer(), p(DEVICE_ID).U, io.axi.aw.bits.addr)
     }
@@ -246,7 +246,7 @@ class AXI4SlaveBridge(implicit p: Parameters) extends Module {
   io.a_packet            <> stage2.io.out_a_packet
 
   // Debug
-  if (p(DEBUG_AXI4_BRIDGE)) {
+  if (p(DEBUG_BRIDGE)) {
     when(io.axi.aw.fire) {
       printf("%d: [AXI4 Bridge-S%d] aw addr=%b\n", DebugTimer(), p(DEVICE_ID).U, io.axi.aw.bits.addr)
     }

@@ -24,7 +24,7 @@ class AXI4StreamMasterBridge(implicit p: Parameters) extends Module {
   io.axi.t.ready    := io.t_packet.ready
 
   // Debug
-  if (p(DEBUG_AXI4_BRIDGE)) {
+  if (p(DEBUG_BRIDGE)) {
     when(io.axi.t.fire) {
       printf("%d: [AXI4 Bridge-M%d] t  data=%b\n", DebugTimer(), p(DEVICE_ID).U, io.axi.t.bits.data)
     }
@@ -47,7 +47,7 @@ class AXI4StreamSlaveBridge(implicit p: Parameters) extends Module {
   io.t_packet.ready := io.axi.t.ready
 
   // Debug
-  if (p(DEBUG_AXI4_BRIDGE)) {
+  if (p(DEBUG_BRIDGE)) {
     when(io.axi.t.fire) {
       printf("%d: [AXI4 Bridge-S%d] t  data=%b\n", DebugTimer(), p(DEVICE_ID).U, io.axi.t.bits.data)
     }
