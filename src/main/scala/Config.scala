@@ -84,7 +84,7 @@ class LibraryConfig
       case ALTERA_MF_V => "/afs/ece.cmu.edu/support/altera/release/pro-19.3.0.222/quartus/eda/sim_lib/altera_mf.v"
     })
 
-case object DEBUG_AXI4_BRIDGE extends Field[Boolean]
+case object DEBUG_BRIDGE extends Field[Boolean]
 case object DEBUG_SERIALIZER extends Field[Boolean]
 case object DEBUG_DESERIALIZER extends Field[Boolean]
 case object DEBUG_NETWORK_FLIT extends Field[Boolean]
@@ -92,7 +92,7 @@ case object DEBUG_NETWORK_CREDIT extends Field[Boolean]
 
 class DebugConfig
     extends Config((site, here, up) => {
-      case DEBUG_AXI4_BRIDGE    => false
+      case DEBUG_BRIDGE         => false
       case DEBUG_SERIALIZER     => false
       case DEBUG_DESERIALIZER   => false
       case DEBUG_NETWORK_FLIT   => false

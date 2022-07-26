@@ -6,21 +6,27 @@ import chipsalliance.rocketchip.config._
 
 class NetworkSimpleWrapper(implicit p: Parameters) extends Module {
   val io = IO(new Bundle {
-    val send = Vec(p(NUM_USER_SEND_PORTS), Flipped(Decoupled(UInt(p(PACKET_WIDTH).W))))
-    val recv = Vec(p(NUM_USER_RECV_PORTS), Decoupled(UInt(p(PACKET_WIDTH).W)))
+    val send      = Vec(p(NUM_USER_SEND_PORTS), Flipped(Decoupled(UInt(p(PACKET_WIDTH).W))))
+    val recv      = Vec(p(NUM_USER_RECV_PORTS), Decoupled(UInt(p(PACKET_WIDTH).W)))
+    val clock_noc = Input(Clock())
   })
 
   val network = Module(new Network)
+  network.clock := io.clock_noc
 
   for (i <- 0 until p(NUM_USER_SEND_PORTS)) {
     val p_ = p.alterPartial({
       case DEVICE_ID => i
     })
+
     val serializer        = Module(new FlitSerializer()(p_.alterPartial({ case FIFO_VC => 0 })))
     val flow_control_send = Module(new FlitFlowControlSend)
+
+    serializer.io.clock_noc      := io.clock_noc
+    flow_control_send.clock      := io.clock_noc
     serializer.io.in_packet      <> io.send(i)
-    serializer.io.clock_noc      := clock
     flow_control_send.io.flit(0) <> serializer.io.out_flit
+
     for (j <- 1 until p(NUM_VCS)) {
       flow_control_send.io.flit(j).bits  := 0.U
       flow_control_send.io.flit(j).valid := false.B
@@ -32,14 +38,18 @@ class NetworkSimpleWrapper(implicit p: Parameters) extends Module {
     val p_ = p.alterPartial({
       case DEVICE_ID => i
     })
+
     val deserializer      = Module(new FlitDeserializer()(p_.alterPartial({ case FIFO_VC => 0 })))
     val flow_control_recv = Module(new FlitFlowControlRecv)
-    io.recv(i)                <> deserializer.io.out_packet
-    deserializer.io.clock_noc := clock
-    deserializer.io.in_flit   <> flow_control_recv.io.flit(0)
+
+    deserializer.io.clock_noc    := io.clock_noc
+    flow_control_recv.clock      := io.clock_noc
+    deserializer.io.out_packet   <> io.recv(i)
+    flow_control_recv.io.flit(0) <> deserializer.io.in_flit
+
     for (j <- 1 until p(NUM_VCS)) {
       flow_control_recv.io.flit(j).ready := false.B
     }
-    flow_control_recv.io.recv <> network.io.recv(i)
+    network.io.recv(i) <> flow_control_recv.io.recv
   }
 }
