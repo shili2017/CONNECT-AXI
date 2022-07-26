@@ -23,7 +23,7 @@ class NetworkAXI4WrapperTester extends AnyFlatSpec with ChiselScalatestTester {
       for (i <- 0 until p(NUM_MASTER_DEVICES)) {
         tb.io.start_write(i).poke(false)
         tb.io.start_read(i).poke(false)
-        tb.io.target_addr(i).poke(2.U)
+        tb.io.target_dest(i).poke(2.U)
       }
       tb.clock.step(CLOCK_DIVIDER_FACTOR)
       tb.io.start_write(0).poke(true)

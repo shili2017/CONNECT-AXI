@@ -32,8 +32,14 @@ object AXI4StreamPacketWidth {
 // Customized by user
 object GetDestFromAXI4ChannelA {
   def apply(a: AXI4LiteChannelA)(implicit p: Parameters): UInt = {
-    assert(p(DEST_BITS) <= a.addr.getWidth)
-    a.addr(p(DEST_BITS) - 1, 0)
+    if (a.getClass == classOf[AXI4ChannelA]) {
+      val a_ = a.asInstanceOf[AXI4ChannelA]
+      assert(p(DEST_BITS) <= a_.user.getWidth)
+      a_.user(p(DEST_BITS) - 1, 0)
+    } else {
+      assert(p(DEST_BITS) <= a.addr.getWidth)
+      a.addr(p(DEST_BITS) - 1, 0)
+    }
   }
 }
 
@@ -63,6 +69,7 @@ object AXI4ChannelA2PacketData {
     if (a.getClass == classOf[AXI4ChannelA]) {
       val a_ = a.asInstanceOf[AXI4ChannelA]
       Cat(
+        a_.user,
         a_.id,
         a_.addr,
         a_.region,
@@ -90,6 +97,7 @@ object AXI4ChannelW2PacketData {
     if (w.getClass == classOf[AXI4ChannelW]) {
       val w_ = w.asInstanceOf[AXI4ChannelW]
       Cat(
+        w_.user,
         w_.strb,
         w_.data,
         w_.last.asUInt,
@@ -110,6 +118,7 @@ object AXI4ChannelB2PacketData {
     if (b.getClass == classOf[AXI4ChannelB]) {
       val b_ = b.asInstanceOf[AXI4ChannelB]
       Cat(
+        b_.user,
         b_.id,
         b_.resp,
         AXI4ChannelID.B
@@ -128,6 +137,7 @@ object AXI4ChannelR2PacketData {
     if (r.getClass == classOf[AXI4ChannelR]) {
       val r_ = r.asInstanceOf[AXI4ChannelR]
       Cat(
+        r_.user,
         r_.id,
         r_.data,
         r_.last.asUInt,
@@ -149,6 +159,10 @@ object Packet2AXI4ChannelA {
     assert(packet.getWidth == p(PACKET_WIDTH))
     if (p(PROTOCOL) == "AXI4") {
       val a = Wire(new AXI4ChannelA)
+      a.user := packet(
+        31 + AXI4Parameters.AXI4AddrWidth + AXI4Parameters.AXI4IdWidth + AXI4Parameters.AXI4UserWidth,
+        32 + AXI4Parameters.AXI4AddrWidth + AXI4Parameters.AXI4IdWidth
+      )
       a.id := packet(
         31 + AXI4Parameters.AXI4AddrWidth + AXI4Parameters.AXI4IdWidth,
         32 + AXI4Parameters.AXI4AddrWidth
@@ -177,6 +191,10 @@ object Packet2AXI4ChannelW {
     assert(packet.getWidth == p(PACKET_WIDTH))
     if (p(PROTOCOL) == "AXI4") {
       val w = Wire(new AXI4ChannelW)
+      w.user := packet(
+        3 + AXI4Parameters.AXI4DataWidth + AXI4Parameters.AXI4DataWidth / 8 + AXI4Parameters.AXI4UserWidth,
+        4 + AXI4Parameters.AXI4DataWidth + AXI4Parameters.AXI4DataWidth / 8
+      )
       w.strb := packet(
         3 + AXI4Parameters.AXI4DataWidth + AXI4Parameters.AXI4DataWidth / 8,
         4 + AXI4Parameters.AXI4DataWidth
@@ -201,6 +219,7 @@ object Packet2AXI4ChannelB {
     assert(packet.getWidth == p(PACKET_WIDTH))
     if (p(PROTOCOL) == "AXI4") {
       val b = Wire(new AXI4ChannelB)
+      b.user := packet(4 + AXI4Parameters.AXI4IdWidth + AXI4Parameters.AXI4UserWidth, 5 + AXI4Parameters.AXI4IdWidth)
       b.id   := packet(4 + AXI4Parameters.AXI4IdWidth, 5)
       b.resp := packet(4, 3)
       b
@@ -217,6 +236,10 @@ object Packet2AXI4ChannelR {
     assert(packet.getWidth == p(PACKET_WIDTH))
     if (p(PROTOCOL) == "AXI4") {
       val r = Wire(new AXI4ChannelR)
+      r.user := packet(
+        5 + AXI4Parameters.AXI4DataWidth + AXI4Parameters.AXI4IdWidth + AXI4Parameters.AXI4UserWidth,
+        6 + AXI4Parameters.AXI4DataWidth + AXI4Parameters.AXI4IdWidth
+      )
       r.id := packet(
         5 + AXI4Parameters.AXI4DataWidth + AXI4Parameters.AXI4IdWidth,
         6 + AXI4Parameters.AXI4DataWidth
@@ -236,7 +259,7 @@ object Packet2AXI4ChannelR {
 
 object AXI4StreamChannelT2PacketData {
   def apply(t: AXI4StreamChannelT): UInt = {
-    Cat(t.id, t.keep, t.strb, t.data, t.last.asUInt, t.dest)
+    Cat(t.user, t.id, t.keep, t.strb, t.data, t.last.asUInt, t.dest)
   }
 }
 
@@ -244,6 +267,10 @@ object Packet2AXI4StreamChannelT {
   def apply(packet: UInt)(implicit p: Parameters): AXI4StreamChannelT = {
     assert(packet.getWidth == AXI4StreamPacketWidth())
     val t = Wire(new AXI4StreamChannelT)
+    t.user := packet(
+      4 + AXI4Parameters.AXI4DataWidth + AXI4Parameters.AXI4DataWidth / 4 + AXI4Parameters.AXI4IdWidth + AXI4Parameters.AXI4UserWidth,
+      5 + AXI4Parameters.AXI4DataWidth + AXI4Parameters.AXI4DataWidth / 4 + AXI4Parameters.AXI4IdWidth
+    )
     t.id := packet(
       4 + AXI4Parameters.AXI4DataWidth + AXI4Parameters.AXI4DataWidth / 4 + AXI4Parameters.AXI4IdWidth,
       5 + AXI4Parameters.AXI4DataWidth + AXI4Parameters.AXI4DataWidth / 4

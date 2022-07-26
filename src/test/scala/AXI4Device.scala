@@ -9,13 +9,13 @@ class AXI4MasterDevice(val ID: Int, val LEN: Int) extends Module {
     val axi         = new AXI4IO
     val start_read  = Input(Bool())
     val start_write = Input(Bool())
-    val target_addr = Input(UInt(AXI4Parameters.AXI4AddrWidth.W))
+    val target_dest = Input(UInt(AXI4Parameters.AXI4UserWidth.W))
     val buffer_peek = Vec(LEN, Output(UInt(AXI4Parameters.AXI4DataWidth.W)))
   })
 
   val DATA = "hdeadbeefdeadbeef".U
 
-  val addr   = RegInit(0.U(AXI4Parameters.AXI4AddrWidth.W))
+  val user   = RegInit(0.U(AXI4Parameters.AXI4UserWidth.W))
   val wlen   = RegInit(0.U(8.W))
   val rlen   = RegInit(0.U(8.W))
   val buffer = RegInit(VecInit(Seq.fill(LEN)(0.U(AXI4Parameters.AXI4DataWidth.W))))
@@ -29,11 +29,11 @@ class AXI4MasterDevice(val ID: Int, val LEN: Int) extends Module {
     is(s_idle) {
       when(io.start_write) {
         state := s_waddr
-        addr  := io.target_addr
+        user  := io.target_dest
       }
       when(io.start_read) {
         state := s_raddr
-        addr  := io.target_addr
+        user  := io.target_dest
       }
     }
     is(s_waddr) {
@@ -76,7 +76,7 @@ class AXI4MasterDevice(val ID: Int, val LEN: Int) extends Module {
   }
 
   io.axi.aw.bits       := 0.U.asTypeOf(new AXI4ChannelA)
-  io.axi.aw.bits.addr  := addr
+  io.axi.aw.bits.user  := user
   io.axi.aw.bits.len   := (LEN - 1).U
   io.axi.aw.bits.size  := "b011".U
   io.axi.aw.bits.burst := "b01".U
@@ -88,7 +88,7 @@ class AXI4MasterDevice(val ID: Int, val LEN: Int) extends Module {
   io.axi.w.valid       := (state === s_wdata)
   io.axi.b.ready       := (state === s_wresp)
   io.axi.ar.bits       := 0.U.asTypeOf(new AXI4ChannelA)
-  io.axi.ar.bits.addr  := addr
+  io.axi.ar.bits.user  := user
   io.axi.ar.bits.len   := (LEN - 1).U
   io.axi.ar.bits.size  := "b011".U
   io.axi.ar.bits.burst := "b01".U
@@ -181,7 +181,7 @@ class AXI4Testbench(val CLOCK_DIVIDER_FACTOR: Int, val LEN: Int)(implicit p: Par
   val io = IO(new Bundle {
     val start_write        = Vec(p(NUM_MASTER_DEVICES), Input(Bool()))
     val start_read         = Vec(p(NUM_MASTER_DEVICES), Input(Bool()))
-    val target_addr        = Vec(p(NUM_MASTER_DEVICES), Input(UInt(AXI4Parameters.AXI4AddrWidth.W)))
+    val target_dest        = Vec(p(NUM_MASTER_DEVICES), Input(UInt(AXI4Parameters.AXI4UserWidth.W)))
     val master_buffer_peek = Vec(p(NUM_MASTER_DEVICES), Vec(LEN, Output(UInt(AXI4Parameters.AXI4DataWidth.W))))
     val slave_buffer_peek  = Vec(p(NUM_SLAVE_DEVICES), Vec(LEN, Output(UInt(AXI4Parameters.AXI4DataWidth.W))))
   })
@@ -203,7 +203,7 @@ class AXI4Testbench(val CLOCK_DIVIDER_FACTOR: Int, val LEN: Int)(implicit p: Par
       master(i).io.axi         <> dut.io.master(i)
       master(i).io.start_write := io.start_write(i)
       master(i).io.start_read  := io.start_read(i)
-      master(i).io.target_addr := io.target_addr(i)
+      master(i).io.target_dest := io.target_dest(i)
       io.master_buffer_peek(i) := master(i).io.buffer_peek
     }
 
