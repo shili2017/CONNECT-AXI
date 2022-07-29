@@ -2,7 +2,6 @@ package connect_axi
 
 import chisel3._
 import chisel3.util._
-import chipsalliance.rocketchip.config._
 import java.io.File
 
 class scfifo(
@@ -23,7 +22,7 @@ class scfifo(
   maximum_depth:           Int    = 0,
   enable_ecc:              String = "FALSE"
 )(
-  implicit p: Parameters)
+  implicit p: NetworkConfigs)
     extends BlackBox(
       Map(
         "lpm_width"               -> lpm_width,
@@ -64,7 +63,7 @@ class scfifo(
     val usedw     = Output(UInt(lpm_widthu.W))
   })
 
-  addPath(new File(p(ALTERA_MF_V)).getCanonicalPath)
+  addPath(new File(p.ALTERA_MF_V).getCanonicalPath)
 }
 
 class dcfifo(
@@ -89,7 +88,7 @@ class dcfifo(
   write_aclr_synch:        String = "OFF",
   enable_ecc:              String = "FALSE"
 )(
-  implicit p: Parameters)
+  implicit p: NetworkConfigs)
     extends BlackBox(
       Map(
         "lpm_width"               -> lpm_width,
@@ -135,5 +134,5 @@ class dcfifo(
     val rdusedw   = Output(UInt(lpm_widthu.W))
   })
 
-  addPath(new File(p(ALTERA_MF_V)).getCanonicalPath)
+  addPath(new File(p.ALTERA_MF_V).getCanonicalPath)
 }

@@ -2,101 +2,100 @@ package connect_axi
 
 import chisel3._
 import chisel3.util._
-import chipsalliance.rocketchip.config._
 
-class mkNetwork(implicit p: Parameters) extends BlackBox with HasBlackBoxResource {
+class mkNetwork(implicit p: NetworkConfigs) extends BlackBox with HasBlackBoxResource {
   val io = IO(new Bundle {
     val CLK   = Input(Clock())
     val RST_N = Input(Bool())
 
-    val send_ports_0_putFlit_flit_in = Input(UInt(p(FLIT_WIDTH).W))
+    val send_ports_0_putFlit_flit_in = Input(UInt(p.FLIT_WIDTH.W))
     val EN_send_ports_0_putFlit      = Input(Bool())
-    val send_ports_0_getCredits      = Output(UInt((p(VC_BITS) + 1).W))
+    val send_ports_0_getCredits      = Output(UInt((p.VC_BITS + 1).W))
     val EN_send_ports_0_getCredits   = Input(Bool())
-    val send_ports_1_putFlit_flit_in = Input(UInt(p(FLIT_WIDTH).W))
+    val send_ports_1_putFlit_flit_in = Input(UInt(p.FLIT_WIDTH.W))
     val EN_send_ports_1_putFlit      = Input(Bool())
-    val send_ports_1_getCredits      = Output(UInt((p(VC_BITS) + 1).W))
+    val send_ports_1_getCredits      = Output(UInt((p.VC_BITS + 1).W))
     val EN_send_ports_1_getCredits   = Input(Bool())
-    val send_ports_2_putFlit_flit_in = Input(UInt(p(FLIT_WIDTH).W))
+    val send_ports_2_putFlit_flit_in = Input(UInt(p.FLIT_WIDTH.W))
     val EN_send_ports_2_putFlit      = Input(Bool())
-    val send_ports_2_getCredits      = Output(UInt((p(VC_BITS) + 1).W))
+    val send_ports_2_getCredits      = Output(UInt((p.VC_BITS + 1).W))
     val EN_send_ports_2_getCredits   = Input(Bool())
-    val send_ports_3_putFlit_flit_in = Input(UInt(p(FLIT_WIDTH).W))
+    val send_ports_3_putFlit_flit_in = Input(UInt(p.FLIT_WIDTH.W))
     val EN_send_ports_3_putFlit      = Input(Bool())
-    val send_ports_3_getCredits      = Output(UInt((p(VC_BITS) + 1).W))
+    val send_ports_3_getCredits      = Output(UInt((p.VC_BITS + 1).W))
     val EN_send_ports_3_getCredits   = Input(Bool())
 
-    val recv_ports_0_getFlit          = Output(UInt(p(FLIT_WIDTH).W))
+    val recv_ports_0_getFlit          = Output(UInt(p.FLIT_WIDTH.W))
     val EN_recv_ports_0_getFlit       = Input(Bool())
-    val recv_ports_0_putCredits_cr_in = Input(UInt((p(VC_BITS) + 1).W))
+    val recv_ports_0_putCredits_cr_in = Input(UInt((p.VC_BITS + 1).W))
     val EN_recv_ports_0_putCredits    = Input(Bool())
-    val recv_ports_1_getFlit          = Output(UInt(p(FLIT_WIDTH).W))
+    val recv_ports_1_getFlit          = Output(UInt(p.FLIT_WIDTH.W))
     val EN_recv_ports_1_getFlit       = Input(Bool())
-    val recv_ports_1_putCredits_cr_in = Input(UInt((p(VC_BITS) + 1).W))
+    val recv_ports_1_putCredits_cr_in = Input(UInt((p.VC_BITS + 1).W))
     val EN_recv_ports_1_putCredits    = Input(Bool())
-    val recv_ports_2_getFlit          = Output(UInt(p(FLIT_WIDTH).W))
+    val recv_ports_2_getFlit          = Output(UInt(p.FLIT_WIDTH.W))
     val EN_recv_ports_2_getFlit       = Input(Bool())
-    val recv_ports_2_putCredits_cr_in = Input(UInt((p(VC_BITS) + 1).W))
+    val recv_ports_2_putCredits_cr_in = Input(UInt((p.VC_BITS + 1).W))
     val EN_recv_ports_2_putCredits    = Input(Bool())
-    val recv_ports_3_getFlit          = Output(UInt(p(FLIT_WIDTH).W))
+    val recv_ports_3_getFlit          = Output(UInt(p.FLIT_WIDTH.W))
     val EN_recv_ports_3_getFlit       = Input(Bool())
-    val recv_ports_3_putCredits_cr_in = Input(UInt((p(VC_BITS) + 1).W))
+    val recv_ports_3_putCredits_cr_in = Input(UInt((p.VC_BITS + 1).W))
     val EN_recv_ports_3_putCredits    = Input(Bool())
 
-    val recv_ports_info_0_getRecvPortID = Output(UInt(p(DEST_BITS).W))
-    val recv_ports_info_1_getRecvPortID = Output(UInt(p(DEST_BITS).W))
-    val recv_ports_info_2_getRecvPortID = Output(UInt(p(DEST_BITS).W))
-    val recv_ports_info_3_getRecvPortID = Output(UInt(p(DEST_BITS).W))
+    val recv_ports_info_0_getRecvPortID = Output(UInt(p.DEST_BITS.W))
+    val recv_ports_info_1_getRecvPortID = Output(UInt(p.DEST_BITS.W))
+    val recv_ports_info_2_getRecvPortID = Output(UInt(p.DEST_BITS.W))
+    val recv_ports_info_3_getRecvPortID = Output(UInt(p.DEST_BITS.W))
   })
 
   addResource("/vsrc/mkNetwork.v")
 }
 
-class NetworkSendInterface(implicit p: Parameters) extends Bundle {
-  val put_flit      = Input(UInt(p(FLIT_WIDTH).W))
+class NetworkSendInterface(implicit p: NetworkConfigs) extends Bundle {
+  val put_flit      = Input(UInt(p.FLIT_WIDTH.W))
   val EN_put_flit   = Input(Bool())
-  val get_credit    = Output(UInt((p(VC_BITS) + 1).W))
+  val get_credit    = Output(UInt((p.VC_BITS + 1).W))
   val EN_get_credit = Input(Bool())
 }
 
-class NetworkRecvInterface(implicit p: Parameters) extends Bundle {
-  val get_flit      = Output(UInt(p(FLIT_WIDTH).W))
+class NetworkRecvInterface(implicit p: NetworkConfigs) extends Bundle {
+  val get_flit      = Output(UInt(p.FLIT_WIDTH.W))
   val EN_get_flit   = Input(Bool())
-  val put_credit    = Input(UInt((p(VC_BITS) + 1).W))
+  val put_credit    = Input(UInt((p.VC_BITS + 1).W))
   val EN_put_credit = Input(Bool())
 }
 
-class Network(implicit p: Parameters) extends Module {
+class Network(implicit p: NetworkConfigs) extends Module {
   val io = IO(new Bundle {
-    val send = Vec(p(NUM_USER_SEND_PORTS), new NetworkSendInterface)
-    val recv = Vec(p(NUM_USER_RECV_PORTS), new NetworkRecvInterface)
+    val send = Vec(p.NUM_USER_SEND_PORTS, new NetworkSendInterface)
+    val recv = Vec(p.NUM_USER_RECV_PORTS, new NetworkRecvInterface)
   })
 
   val network = Module(new mkNetwork)
 
-  val recv_ports_info_getRecvPortID = Wire(Vec(p(NUM_USER_RECV_PORTS), UInt(p(DEST_BITS).W)))
+  val recv_ports_info_getRecvPortID = Wire(Vec(p.NUM_USER_RECV_PORTS, UInt(p.DEST_BITS.W)))
 
-  if (p(DEBUG_NETWORK_FLIT)) {
-    for (i <- 0 until p(NUM_USER_SEND_PORTS)) {
-      when(io.send(i).put_flit(p(FLIT_WIDTH) - 1)) {
+  if (p.DEBUG_NETWORK_FLIT) {
+    for (i <- 0 until p.NUM_USER_SEND_PORTS) {
+      when(io.send(i).put_flit(p.FLIT_WIDTH - 1)) {
         printf("%d: [Network send %d] put_flit=%b\n", DebugTimer(), i.U, io.send(i).put_flit)
       }
     }
-    for (i <- 0 until p(NUM_USER_RECV_PORTS)) {
-      when(io.recv(i).get_flit(p(FLIT_WIDTH) - 1)) {
+    for (i <- 0 until p.NUM_USER_RECV_PORTS) {
+      when(io.recv(i).get_flit(p.FLIT_WIDTH - 1)) {
         printf("%d: [Network recv %d] get_flit=%b\n", DebugTimer(), i.U, io.recv(i).get_flit)
       }
     }
   }
 
-  if (p(DEBUG_NETWORK_CREDIT)) {
-    for (i <- 0 until p(NUM_USER_SEND_PORTS)) {
-      when(io.send(i).get_credit(p(VC_BITS))) {
+  if (p.DEBUG_NETWORK_CREDIT) {
+    for (i <- 0 until p.NUM_USER_SEND_PORTS) {
+      when(io.send(i).get_credit(p.VC_BITS)) {
         printf("%d: [Network send %d] get_credit=%b\n", DebugTimer(), i.U, io.send(i).get_credit)
       }
     }
-    for (i <- 0 until p(NUM_USER_RECV_PORTS)) {
-      when(io.recv(i).put_credit(p(VC_BITS))) {
+    for (i <- 0 until p.NUM_USER_RECV_PORTS) {
+      when(io.recv(i).put_credit(p.VC_BITS)) {
         printf("%d: [Network recv %d] put_credit=%b\n", DebugTimer(), i.U, io.recv(i).put_credit)
       }
     }
@@ -140,5 +139,4 @@ class Network(implicit p: Parameters) extends Module {
   recv_ports_info_getRecvPortID(1)         := network.io.recv_ports_info_1_getRecvPortID
   recv_ports_info_getRecvPortID(2)         := network.io.recv_ports_info_2_getRecvPortID
   recv_ports_info_getRecvPortID(3)         := network.io.recv_ports_info_3_getRecvPortID
-
 }

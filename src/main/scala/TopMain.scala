@@ -1,23 +1,31 @@
 package connect_axi
 
-import chipsalliance.rocketchip.config._
-
 object TopMain extends App {
   // Pass protocol parameter from sbt command line interface
   val protocol = args(0)
   assert(Seq("AXI4", "AXI4-Lite", "AXI4-Stream", "Simple").contains(protocol))
 
-  // Implicit parameters
-  implicit val p: Config = (protocol match {
-    case "AXI4"        => new AXI4Config
-    case "AXI4-Lite"   => new AXI4LiteConfig
-    case "AXI4-Stream" => new AXI4StreamConfig
-    case "Simple"      => new SimpleConfig
-  }).toInstance
+  // Configs
+  val network_configs = GetImplicitNetworkConfigs(protocol)
 
+  // Emit Verilog RTL
   protocol match {
-    case "AXI4" | "AXI4-Lite" => (new chisel3.stage.ChiselStage).emitVerilog(new NetworkAXI4Wrapper, args)
-    case "AXI4-Stream"        => (new chisel3.stage.ChiselStage).emitVerilog(new NetworkAXI4StreamWrapper, args)
-    case "Simple"             => (new chisel3.stage.ChiselStage).emitVerilog(new NetworkSimpleWrapper, args)
+    case "AXI4" | "AXI4-Lite" =>
+      (new chisel3.stage.ChiselStage).emitVerilog(new NetworkAXI4Wrapper()(network_configs), args)
+    case "AXI4-Stream" =>
+      (new chisel3.stage.ChiselStage).emitVerilog(new NetworkAXI4StreamWrapper()(network_configs), args)
+    case "Simple" => (new chisel3.stage.ChiselStage).emitVerilog(new NetworkSimpleWrapper()(network_configs), args)
+  }
+}
+
+object GetImplicitNetworkConfigs {
+  def apply(protocol: String): NetworkConfigs = {
+    val connect_configs = new Configs(ConnectConfig())
+    new NetworkConfigs(new Configs(ConnectConfig() ++ LibraryConfig() ++ (protocol match {
+      case "AXI4"        => AXI4WrapperConfig(connect_configs)
+      case "AXI4-Lite"   => AXI4LiteWrapperConfig(connect_configs)
+      case "AXI4-Stream" => AXI4StreamWrapperConfig(connect_configs)
+      case "Simple"      => SimpleWrapperConfig(connect_configs)
+    })))
   }
 }

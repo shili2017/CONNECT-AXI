@@ -2,7 +2,6 @@ package connect_axi
 
 import chisel3._
 import chisel3.util._
-import chipsalliance.rocketchip.config._
 
 object AXI4ChannelID {
   val AW = 0.U(3.W)
@@ -12,55 +11,62 @@ object AXI4ChannelID {
   val R  = 4.U(3.W)
 }
 
-object AXI4PacketWidth {
-  def apply()(implicit p: Parameters): Int = {
-    val bus_io = if (p(PROTOCOL) == "AXI4") new AXI4IO else new AXI4LiteIO
-    List(
-      bus_io.aw.bits.getWidth,
-      bus_io.w.bits.getWidth,
-      bus_io.b.bits.getWidth,
-      bus_io.ar.bits.getWidth,
-      bus_io.r.bits.getWidth
-    ).max + AXI4ChannelID.AW.getWidth + p(META_WIDTH)
-  }
+object AXI4PacketDataWidth {
+  def apply(): Int = List(
+    (new AXI4IO).aw.bits.getWidth,
+    (new AXI4IO).w.bits.getWidth,
+    (new AXI4IO).b.bits.getWidth,
+    (new AXI4IO).ar.bits.getWidth,
+    (new AXI4IO).r.bits.getWidth
+  ).max + AXI4ChannelID.AW.getWidth
 }
 
-object AXI4StreamPacketWidth {
-  def apply()(implicit p: Parameters): Int = (new AXI4StreamIO).t.bits.getWidth + p(META_WIDTH)
+object AXI4LitePacketDataWidth {
+  def apply(): Int = List(
+    (new AXI4LiteIO).aw.bits.getWidth,
+    (new AXI4LiteIO).w.bits.getWidth,
+    (new AXI4LiteIO).b.bits.getWidth,
+    (new AXI4LiteIO).ar.bits.getWidth,
+    (new AXI4LiteIO).r.bits.getWidth
+  ).max + AXI4ChannelID.AW.getWidth
+}
+
+object AXI4StreamPacketDataWidth {
+  def apply(): Int = (new AXI4StreamIO).t.bits.getWidth
 }
 
 // Customized by user
 object GetDestFromAXI4ChannelA {
-  def apply(a: AXI4LiteChannelA)(implicit p: Parameters): UInt = {
+  def apply(a: AXI4LiteChannelA)(implicit p: NetworkConfigs): UInt = {
     if (a.getClass == classOf[AXI4ChannelA]) {
       val a_ = a.asInstanceOf[AXI4ChannelA]
-      assert(p(DEST_BITS) <= a_.user.getWidth)
-      a_.user(p(DEST_BITS) - 1, 0)
+      assert(p.DEST_BITS <= a_.user.getWidth)
+      a_.user(p.DEST_BITS - 1, 0)
     } else {
-      assert(p(DEST_BITS) <= a.addr.getWidth)
-      a.addr(p(DEST_BITS) - 1, 0)
+      assert(p.DEST_BITS <= a.addr.getWidth)
+      a.addr(p.DEST_BITS - 1, 0)
     }
   }
 }
 
 object GetDestFromAXI4StreamChannelT {
-  def apply(t: AXI4StreamChannelT)(implicit p: Parameters): UInt = {
-    assert(p(DEST_BITS) <= t.dest.getWidth)
-    t.dest(p(DEST_BITS) - 1, 0)
+  def apply(t: AXI4StreamChannelT)(implicit p: NetworkConfigs): UInt = {
+    assert(p.DEST_BITS <= t.dest.getWidth)
+    t.dest(p.DEST_BITS - 1, 0)
   }
 }
 
 object GetChannelIDFromAXI4Packet {
-  def apply(packet: UInt)(implicit p: Parameters): UInt = {
-    assert(packet.getWidth == p(PACKET_WIDTH))
+  def apply(packet: UInt)(implicit p: NetworkConfigs): UInt = {
+    assert(packet.getWidth == p.PACKET_WIDTH)
     packet(2, 0)
   }
 }
 
 object GetSrcFromPacket {
-  def apply(packet: UInt)(implicit p: Parameters): UInt = {
-    assert(packet.getWidth == p(PACKET_WIDTH))
-    packet(p(PACKET_WIDTH) - p(META_WIDTH) + p(SRC_BITS) - 1, p(PACKET_WIDTH) - p(META_WIDTH))
+  def apply(packet: UInt)(implicit p: NetworkConfigs): UInt = {
+    assert(packet.getWidth == p.PACKET_WIDTH)
+    packet(p.PACKET_WIDTH - p.META_WIDTH + p.SRC_BITS - 1, p.PACKET_WIDTH - p.META_WIDTH)
   }
 }
 
@@ -155,9 +161,9 @@ object AXI4ChannelR2PacketData {
 }
 
 object Packet2AXI4ChannelA {
-  def apply(packet: UInt)(implicit p: Parameters): AXI4LiteChannelA = {
-    assert(packet.getWidth == p(PACKET_WIDTH))
-    if (p(PROTOCOL) == "AXI4") {
+  def apply(packet: UInt)(implicit p: NetworkConfigs): AXI4LiteChannelA = {
+    assert(packet.getWidth == p.PACKET_WIDTH)
+    if (p.PROTOCOL == "AXI4") {
       val a = Wire(new AXI4ChannelA)
       a.user := packet(
         31 + AXI4Parameters.AXI4AddrWidth + AXI4Parameters.AXI4IdWidth + AXI4Parameters.AXI4UserWidth,
@@ -187,9 +193,9 @@ object Packet2AXI4ChannelA {
 }
 
 object Packet2AXI4ChannelW {
-  def apply(packet: UInt)(implicit p: Parameters): AXI4LiteChannelW = {
-    assert(packet.getWidth == p(PACKET_WIDTH))
-    if (p(PROTOCOL) == "AXI4") {
+  def apply(packet: UInt)(implicit p: NetworkConfigs): AXI4LiteChannelW = {
+    assert(packet.getWidth == p.PACKET_WIDTH)
+    if (p.PROTOCOL == "AXI4") {
       val w = Wire(new AXI4ChannelW)
       w.user := packet(
         3 + AXI4Parameters.AXI4DataWidth + AXI4Parameters.AXI4DataWidth / 8 + AXI4Parameters.AXI4UserWidth,
@@ -215,9 +221,9 @@ object Packet2AXI4ChannelW {
 }
 
 object Packet2AXI4ChannelB {
-  def apply(packet: UInt)(implicit p: Parameters): AXI4LiteChannelB = {
-    assert(packet.getWidth == p(PACKET_WIDTH))
-    if (p(PROTOCOL) == "AXI4") {
+  def apply(packet: UInt)(implicit p: NetworkConfigs): AXI4LiteChannelB = {
+    assert(packet.getWidth == p.PACKET_WIDTH)
+    if (p.PROTOCOL == "AXI4") {
       val b = Wire(new AXI4ChannelB)
       b.user := packet(4 + AXI4Parameters.AXI4IdWidth + AXI4Parameters.AXI4UserWidth, 5 + AXI4Parameters.AXI4IdWidth)
       b.id   := packet(4 + AXI4Parameters.AXI4IdWidth, 5)
@@ -232,9 +238,9 @@ object Packet2AXI4ChannelB {
 }
 
 object Packet2AXI4ChannelR {
-  def apply(packet: UInt)(implicit p: Parameters): AXI4LiteChannelR = {
-    assert(packet.getWidth == p(PACKET_WIDTH))
-    if (p(PROTOCOL) == "AXI4") {
+  def apply(packet: UInt)(implicit p: NetworkConfigs): AXI4LiteChannelR = {
+    assert(packet.getWidth == p.PACKET_WIDTH)
+    if (p.PROTOCOL == "AXI4") {
       val r = Wire(new AXI4ChannelR)
       r.user := packet(
         5 + AXI4Parameters.AXI4DataWidth + AXI4Parameters.AXI4IdWidth + AXI4Parameters.AXI4UserWidth,
@@ -264,8 +270,8 @@ object AXI4StreamChannelT2PacketData {
 }
 
 object Packet2AXI4StreamChannelT {
-  def apply(packet: UInt)(implicit p: Parameters): AXI4StreamChannelT = {
-    assert(packet.getWidth == AXI4StreamPacketWidth())
+  def apply(packet: UInt)(implicit p: NetworkConfigs): AXI4StreamChannelT = {
+    assert(packet.getWidth == p.PACKET_WIDTH)
     val t = Wire(new AXI4StreamChannelT)
     t.user := packet(
       4 + AXI4Parameters.AXI4DataWidth + AXI4Parameters.AXI4DataWidth / 4 + AXI4Parameters.AXI4IdWidth + AXI4Parameters.AXI4UserWidth,

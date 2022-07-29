@@ -2,12 +2,15 @@ package connect_axi
 
 import chisel3._
 import chisel3.util._
-import chipsalliance.rocketchip.config._
 
-class FlitSerializer(implicit p: Parameters) extends Module {
-  val IN_PACKET_WIDTH = p(PACKET_WIDTH)
-  val OUT_FLIT_WIDTH  = p(FLIT_WIDTH)
-
+class FlitSerializer(
+  val IN_PACKET_WIDTH: Int,
+  val OUT_FLIT_WIDTH:  Int,
+  val DEVICE_ID:       Int,
+  val VC:              Int
+)(
+  implicit p: NetworkConfigs)
+    extends Module {
   val io = IO(new Bundle {
     val in_packet = Flipped(Decoupled(UInt(IN_PACKET_WIDTH.W)))
     val out_flit  = Decoupled(UInt(OUT_FLIT_WIDTH.W))
@@ -16,7 +19,7 @@ class FlitSerializer(implicit p: Parameters) extends Module {
 
   val packet = Wire(Decoupled(UInt(IN_PACKET_WIDTH.W)))
 
-  if (p(USE_FIFO_IP)) {
+  if (p.USE_FIFO_IP) {
     val fifo = Module(new dcfifo(lpm_width = IN_PACKET_WIDTH, lpm_widthu = 2, lpm_numwords = 4, lpm_showahead = "ON"))
     fifo.io.aclr       := reset
     fifo.io.wrclk      := clock
@@ -31,8 +34,8 @@ class FlitSerializer(implicit p: Parameters) extends Module {
     packet <> io.in_packet
   }
 
-  val IN_PACKET_DATA_WIDTH = IN_PACKET_WIDTH - p(META_WIDTH)
-  val OUT_FLIT_DATA_WIDTH  = OUT_FLIT_WIDTH - p(META_WIDTH)
+  val IN_PACKET_DATA_WIDTH = IN_PACKET_WIDTH - p.META_WIDTH
+  val OUT_FLIT_DATA_WIDTH  = OUT_FLIT_WIDTH - p.META_WIDTH
   val LEN                  = (IN_PACKET_DATA_WIDTH + OUT_FLIT_DATA_WIDTH - 1) / OUT_FLIT_DATA_WIDTH
 
   withClock(io.clock_noc) {
@@ -58,7 +61,7 @@ class FlitSerializer(implicit p: Parameters) extends Module {
       }
     }
 
-    val meta_reg = RegInit(0.U(p(META_WIDTH).W))
+    val meta_reg = RegInit(0.U(p.META_WIDTH.W))
     val data_reg = RegInit(0.U(IN_PACKET_DATA_WIDTH.W))
     when(packet.fire) {
       meta_reg := packet.bits(IN_PACKET_WIDTH - 1, IN_PACKET_DATA_WIDTH)
@@ -74,13 +77,13 @@ class FlitSerializer(implicit p: Parameters) extends Module {
     // Out flit output signals
     io.out_flit.valid := (state === s_send)
     io.out_flit.bits := Cat(
-      meta_reg(p(META_WIDTH) - 1).asUInt,
-      (meta_reg(p(META_WIDTH) - 2) && (len === (LEN - 1).U)).asUInt, // update tail
-      meta_reg(p(META_WIDTH) - 3, 0),
+      meta_reg(p.META_WIDTH - 1).asUInt,
+      (meta_reg(p.META_WIDTH - 2) && (len === (LEN - 1).U)).asUInt, // update tail
+      meta_reg(p.META_WIDTH - 3, 0),
       data_reg(OUT_FLIT_DATA_WIDTH - 1, 0)
     )
 
-    if (p(DEBUG_SERIALIZER)) {
+    if (p.DEBUG_SERIALIZER) {
       val cnt = RegInit(0.U((log2Up(LEN) + 1).W))
       when(packet.fire) {
         cnt := 0.U
@@ -90,8 +93,8 @@ class FlitSerializer(implicit p: Parameters) extends Module {
         printf(
           "%d: [Serializer   %d] vc=%d out_flit=%b (%d/%d)\n",
           DebugTimer(),
-          p(DEVICE_ID).U,
-          p(FIFO_VC).U,
+          DEVICE_ID.U,
+          VC.U,
           io.out_flit.bits,
           cnt + 1.U,
           LEN.U
@@ -100,23 +103,27 @@ class FlitSerializer(implicit p: Parameters) extends Module {
     }
   } // End clock_noc domain
 
-  if (p(DEBUG_SERIALIZER)) {
+  if (p.DEBUG_SERIALIZER) {
     when(io.in_packet.fire) {
       printf(
         "%d: [Serializer   %d] vc=%d in_packet=%b\n",
         DebugTimer(),
-        p(DEVICE_ID).U,
-        p(FIFO_VC).U,
+        DEVICE_ID.U,
+        VC.U,
         io.in_packet.bits
       )
     }
   }
 }
 
-class FlitDeserializer(implicit p: Parameters) extends Module {
-  val IN_FLIT_WIDTH    = p(FLIT_WIDTH)
-  val OUT_PACKET_WIDTH = p(PACKET_WIDTH)
-
+class FlitDeserializer(
+  val IN_FLIT_WIDTH:    Int,
+  val OUT_PACKET_WIDTH: Int,
+  val DEVICE_ID:        Int,
+  val VC:               Int
+)(
+  implicit p: NetworkConfigs)
+    extends Module {
   val io = IO(new Bundle {
     val in_flit    = Flipped(Decoupled(UInt(IN_FLIT_WIDTH.W)))
     val out_packet = Decoupled(UInt(OUT_PACKET_WIDTH.W))
@@ -125,7 +132,7 @@ class FlitDeserializer(implicit p: Parameters) extends Module {
 
   val packet = Wire(Decoupled(UInt(OUT_PACKET_WIDTH.W)))
 
-  if (p(USE_FIFO_IP)) {
+  if (p.USE_FIFO_IP) {
     val fifo = Module(new dcfifo(lpm_width = OUT_PACKET_WIDTH, lpm_widthu = 2, lpm_numwords = 4, lpm_showahead = "ON"))
     fifo.io.aclr        := reset
     fifo.io.wrclk       := io.clock_noc
@@ -140,34 +147,34 @@ class FlitDeserializer(implicit p: Parameters) extends Module {
     io.out_packet <> packet
   }
 
-  val IN_FLIT_DATA_WIDTH    = IN_FLIT_WIDTH - p(META_WIDTH)
-  val OUT_PACKET_DATA_WIDTH = OUT_PACKET_WIDTH - p(META_WIDTH)
+  val IN_FLIT_DATA_WIDTH    = IN_FLIT_WIDTH - p.META_WIDTH
+  val OUT_PACKET_DATA_WIDTH = OUT_PACKET_WIDTH - p.META_WIDTH
   val LEN                   = (OUT_PACKET_DATA_WIDTH + IN_FLIT_DATA_WIDTH - 1) / IN_FLIT_DATA_WIDTH
 
   withClock(io.clock_noc) {
-    val in_flit_src = Wire(UInt(p(SRC_BITS).W))
-    in_flit_src := io.in_flit.bits(IN_FLIT_DATA_WIDTH + p(SRC_BITS) - 1, IN_FLIT_DATA_WIDTH)
+    val in_flit_src = Wire(UInt(p.SRC_BITS.W))
+    in_flit_src := io.in_flit.bits(IN_FLIT_DATA_WIDTH + p.SRC_BITS - 1, IN_FLIT_DATA_WIDTH)
 
     // Length counter for each source
-    val len = RegInit(VecInit(Seq.fill(p(NUM_USER_SEND_PORTS))(0.U(log2Up(LEN).W))))
+    val len = RegInit(VecInit(Seq.fill(p.NUM_USER_SEND_PORTS)(0.U(log2Up(LEN).W))))
 
     // FSM to receive flits from network and send flits to device
     val s_recv :: s_data :: Nil = Enum(2)
-    val state                   = RegInit(VecInit(Seq.fill(p(NUM_USER_SEND_PORTS))(s_recv)))
+    val state                   = RegInit(VecInit(Seq.fill(p.NUM_USER_SEND_PORTS)(s_recv)))
 
     // valid & ready signals for each source
-    val in_flit_valid_vec    = Wire(Vec(p(NUM_USER_SEND_PORTS), Bool()))
-    val in_flit_ready_vec    = Wire(Vec(p(NUM_USER_SEND_PORTS), Bool()))
-    val out_packet_valid_vec = Wire(Vec(p(NUM_USER_SEND_PORTS), Bool()))
-    val out_packet_ready_vec = WireDefault(VecInit(Seq.fill(p(NUM_USER_SEND_PORTS))(false.B)))
-    for (i <- 0 until p(NUM_USER_SEND_PORTS)) {
+    val in_flit_valid_vec    = Wire(Vec(p.NUM_USER_SEND_PORTS, Bool()))
+    val in_flit_ready_vec    = Wire(Vec(p.NUM_USER_SEND_PORTS, Bool()))
+    val out_packet_valid_vec = Wire(Vec(p.NUM_USER_SEND_PORTS, Bool()))
+    val out_packet_ready_vec = WireDefault(VecInit(Seq.fill(p.NUM_USER_SEND_PORTS)(false.B)))
+    for (i <- 0 until p.NUM_USER_SEND_PORTS) {
       in_flit_valid_vec(i)    := io.in_flit.valid && (in_flit_src === i.U)
       in_flit_ready_vec(i)    := (state(i) === s_recv)
       out_packet_valid_vec(i) := (state(i) === s_data)
     }
 
     // FSM for each source
-    for (i <- 0 until p(NUM_USER_SEND_PORTS)) {
+    for (i <- 0 until p.NUM_USER_SEND_PORTS) {
       switch(state(i)) {
         is(s_recv) {
           when(in_flit_valid_vec(i) && in_flit_ready_vec(i)) {
@@ -187,12 +194,12 @@ class FlitDeserializer(implicit p: Parameters) extends Module {
     }
 
     // In flit register for each source
-    val flit_meta_reg = RegInit(VecInit(Seq.fill(p(NUM_USER_SEND_PORTS))(0.U(p(META_WIDTH).W))))
-    val flit_data_reg = Wire(Vec(p(NUM_USER_SEND_PORTS), UInt(OUT_PACKET_DATA_WIDTH.W)))
+    val flit_meta_reg = RegInit(VecInit(Seq.fill(p.NUM_USER_SEND_PORTS)(0.U(p.META_WIDTH.W))))
+    val flit_data_reg = Wire(Vec(p.NUM_USER_SEND_PORTS, UInt(OUT_PACKET_DATA_WIDTH.W)))
     val flit_data_reg_vec = RegInit(
-      VecInit(Seq.fill(p(NUM_USER_SEND_PORTS))(VecInit(Seq.fill(LEN)(0.U(IN_FLIT_DATA_WIDTH.W)))))
+      VecInit(Seq.fill(p.NUM_USER_SEND_PORTS)(VecInit(Seq.fill(LEN)(0.U(IN_FLIT_DATA_WIDTH.W)))))
     )
-    for (i <- 0 until p(NUM_USER_SEND_PORTS)) {
+    for (i <- 0 until p.NUM_USER_SEND_PORTS) {
       when(in_flit_valid_vec(i) && in_flit_ready_vec(i)) {
         flit_meta_reg(i)             := io.in_flit.bits(IN_FLIT_WIDTH - 1, IN_FLIT_DATA_WIDTH)
         flit_data_reg_vec(i)(len(i)) := io.in_flit.bits(IN_FLIT_DATA_WIDTH - 1, 0)
@@ -204,10 +211,10 @@ class FlitDeserializer(implicit p: Parameters) extends Module {
     io.in_flit.ready := in_flit_ready_vec(in_flit_src)
 
     // Priority encoder to decide which flit to out
-    val out_packet_idx = WireDefault(0.U(p(SRC_BITS).W))
-    for (i <- 0 until p(NUM_USER_SEND_PORTS)) {
+    val out_packet_idx = WireDefault(0.U(p.SRC_BITS.W))
+    for (i <- 0 until p.NUM_USER_SEND_PORTS) {
       when(out_packet_valid_vec(i)) {
-        out_packet_idx := i.U(p(SRC_BITS).W)
+        out_packet_idx := i.U(p.SRC_BITS.W)
       }
     }
     out_packet_ready_vec(out_packet_idx) := packet.ready
@@ -216,20 +223,20 @@ class FlitDeserializer(implicit p: Parameters) extends Module {
     packet.valid := out_packet_valid_vec.reduce(_ || _)
     packet.bits  := Cat(flit_meta_reg(out_packet_idx), flit_data_reg(out_packet_idx))
 
-    if (p(DEBUG_DESERIALIZER)) {
+    if (p.DEBUG_DESERIALIZER) {
       when(io.in_flit.fire) {
-        printf("%d: [Deserializer %d] vc=%d  in_flit=%b\n", DebugTimer(), p(DEVICE_ID).U, p(FIFO_VC).U, io.in_flit.bits)
+        printf("%d: [Deserializer %d] vc=%d  in_flit=%b\n", DebugTimer(), DEVICE_ID.U, VC.U, io.in_flit.bits)
       }
     }
   } // End clock_noc domain
 
-  if (p(DEBUG_DESERIALIZER)) {
+  if (p.DEBUG_DESERIALIZER) {
     when(io.out_packet.fire) {
       printf(
         "%d: [Deserializer %d] vc=%d out_packet=%b\n",
         DebugTimer(),
-        p(DEVICE_ID).U,
-        p(FIFO_VC).U,
+        DEVICE_ID.U,
+        VC.U,
         io.out_packet.bits
       )
     }
