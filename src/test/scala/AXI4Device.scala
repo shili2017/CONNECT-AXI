@@ -2,20 +2,19 @@ package connect_axi
 
 import chisel3._
 import chisel3.util._
-import chipsalliance.rocketchip.config._
 
 class AXI4MasterDevice(val ID: Int, val LEN: Int) extends Module {
   val io = IO(new Bundle {
     val axi         = new AXI4IO
     val start_read  = Input(Bool())
     val start_write = Input(Bool())
-    val target_addr = Input(UInt(AXI4Parameters.AXI4AddrWidth.W))
+    val target_dest = Input(UInt(AXI4Parameters.AXI4UserWidth.W))
     val buffer_peek = Vec(LEN, Output(UInt(AXI4Parameters.AXI4DataWidth.W)))
   })
 
   val DATA = "hdeadbeefdeadbeef".U
 
-  val addr   = RegInit(0.U(AXI4Parameters.AXI4AddrWidth.W))
+  val user   = RegInit(0.U(AXI4Parameters.AXI4UserWidth.W))
   val wlen   = RegInit(0.U(8.W))
   val rlen   = RegInit(0.U(8.W))
   val buffer = RegInit(VecInit(Seq.fill(LEN)(0.U(AXI4Parameters.AXI4DataWidth.W))))
@@ -29,11 +28,11 @@ class AXI4MasterDevice(val ID: Int, val LEN: Int) extends Module {
     is(s_idle) {
       when(io.start_write) {
         state := s_waddr
-        addr  := io.target_addr
+        user  := io.target_dest
       }
       when(io.start_read) {
         state := s_raddr
-        addr  := io.target_addr
+        user  := io.target_dest
       }
     }
     is(s_waddr) {
@@ -76,7 +75,7 @@ class AXI4MasterDevice(val ID: Int, val LEN: Int) extends Module {
   }
 
   io.axi.aw.bits       := 0.U.asTypeOf(new AXI4ChannelA)
-  io.axi.aw.bits.addr  := addr
+  io.axi.aw.bits.user  := user
   io.axi.aw.bits.len   := (LEN - 1).U
   io.axi.aw.bits.size  := "b011".U
   io.axi.aw.bits.burst := "b01".U
@@ -88,7 +87,7 @@ class AXI4MasterDevice(val ID: Int, val LEN: Int) extends Module {
   io.axi.w.valid       := (state === s_wdata)
   io.axi.b.ready       := (state === s_wresp)
   io.axi.ar.bits       := 0.U.asTypeOf(new AXI4ChannelA)
-  io.axi.ar.bits.addr  := addr
+  io.axi.ar.bits.user  := user
   io.axi.ar.bits.len   := (LEN - 1).U
   io.axi.ar.bits.size  := "b011".U
   io.axi.ar.bits.burst := "b01".U
@@ -177,17 +176,17 @@ class AXI4SlaveDevice(val ID: Int, val LEN: Int) extends Module {
   io.axi.r.valid     := (state === s_rdata)
 }
 
-class AXI4Testbench(val CLOCK_DIVIDER_FACTOR: Int, val LEN: Int)(implicit p: Parameters) extends Module {
+class AXI4Testbench(val CLOCK_DIVIDER_FACTOR: Int, val LEN: Int)(implicit p: NetworkConfigs) extends Module {
   val io = IO(new Bundle {
-    val start_write        = Vec(p(NUM_MASTER_DEVICES), Input(Bool()))
-    val start_read         = Vec(p(NUM_MASTER_DEVICES), Input(Bool()))
-    val target_addr        = Vec(p(NUM_MASTER_DEVICES), Input(UInt(AXI4Parameters.AXI4AddrWidth.W)))
-    val master_buffer_peek = Vec(p(NUM_MASTER_DEVICES), Vec(LEN, Output(UInt(AXI4Parameters.AXI4DataWidth.W))))
-    val slave_buffer_peek  = Vec(p(NUM_SLAVE_DEVICES), Vec(LEN, Output(UInt(AXI4Parameters.AXI4DataWidth.W))))
+    val start_write        = Vec(p.NUM_MASTER_DEVICES, Input(Bool()))
+    val start_read         = Vec(p.NUM_MASTER_DEVICES, Input(Bool()))
+    val target_dest        = Vec(p.NUM_MASTER_DEVICES, Input(UInt(AXI4Parameters.AXI4UserWidth.W)))
+    val master_buffer_peek = Vec(p.NUM_MASTER_DEVICES, Vec(LEN, Output(UInt(AXI4Parameters.AXI4DataWidth.W))))
+    val slave_buffer_peek  = Vec(p.NUM_SLAVE_DEVICES, Vec(LEN, Output(UInt(AXI4Parameters.AXI4DataWidth.W))))
   })
 
   val dut = Module(new NetworkAXI4Wrapper)
-  if (p(USE_FIFO_IP)) {
+  if (p.USE_FIFO_IP) {
     dut.io.clock_noc := clock
     dut.clock        := ClockDivider(clock, CLOCK_DIVIDER_FACTOR)
   } else {
@@ -195,23 +194,23 @@ class AXI4Testbench(val CLOCK_DIVIDER_FACTOR: Int, val LEN: Int)(implicit p: Par
   }
 
   withClock(dut.clock) {
-    val master = for (i <- 0 until p(NUM_MASTER_DEVICES)) yield {
+    val master = for (i <- 0 until p.NUM_MASTER_DEVICES) yield {
       val device = Module(new AXI4MasterDevice(i, LEN))
       device
     }
-    for (i <- 0 until p(NUM_MASTER_DEVICES)) {
+    for (i <- 0 until p.NUM_MASTER_DEVICES) {
       master(i).io.axi         <> dut.io.master(i)
       master(i).io.start_write := io.start_write(i)
       master(i).io.start_read  := io.start_read(i)
-      master(i).io.target_addr := io.target_addr(i)
+      master(i).io.target_dest := io.target_dest(i)
       io.master_buffer_peek(i) := master(i).io.buffer_peek
     }
 
-    val slave = for (i <- 0 until p(NUM_SLAVE_DEVICES)) yield {
-      val device = Module(new AXI4SlaveDevice(i + p(NUM_MASTER_DEVICES), LEN))
+    val slave = for (i <- 0 until p.NUM_SLAVE_DEVICES) yield {
+      val device = Module(new AXI4SlaveDevice(i + p.NUM_MASTER_DEVICES, LEN))
       device
     }
-    for (i <- 0 until p(NUM_SLAVE_DEVICES)) {
+    for (i <- 0 until p.NUM_SLAVE_DEVICES) {
       slave(i).io.axi         <> dut.io.slave(i)
       io.slave_buffer_peek(i) := slave(i).io.buffer_peek
     }

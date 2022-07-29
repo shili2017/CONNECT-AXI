@@ -6,9 +6,6 @@ ThisBuild / organization := "com.github.shili2017"
 
 val chiselVersion = "3.5.1"
 
-lazy val cde = (project in file("cde/build-rules/sbt"))
-  .settings(publishArtifact := false)
-
 lazy val root = (project in file("."))
   .settings(
     name := "CONNECT_AXI",
@@ -26,4 +23,3 @@ lazy val root = (project in file("."))
     ),
     addCompilerPlugin(("edu.berkeley.cs" % "chisel3-plugin" % chiselVersion).cross(CrossVersion.full))
   )
-  .dependsOn(cde)

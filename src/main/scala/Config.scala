@@ -1,114 +1,103 @@
 package connect_axi
 
-import chisel3.util.log2Up
-import chipsalliance.rocketchip.config._
-import os.truncate
-
-case object NUM_USER_SEND_PORTS extends Field[Int]
-case object NUM_USER_RECV_PORTS extends Field[Int]
-case object NUM_VCS extends Field[Int]
-case object REAL_FLIT_DATA_WIDTH extends Field[Int]
-case object FLIT_BUFFER_DEPTH extends Field[Int]
-case object FLIT_DATA_WIDTH extends Field[Int]
-case object SRC_BITS extends Field[Int]
-case object DEST_BITS extends Field[Int]
-case object VC_BITS extends Field[Int]
-case object META_WIDTH extends Field[Int]
-case object FLIT_WIDTH extends Field[Int]
-case object PACKET_DATA_WIDTH extends Field[Int]
+import chisel3.util._
 
 // CONNECT network parameters, change these values after re-generating the network
-class ConnectConfig
-    extends Config((site, here, up) => {
-      case NUM_USER_SEND_PORTS  => 4
-      case NUM_USER_RECV_PORTS  => 4
-      case NUM_VCS              => 3
-      case REAL_FLIT_DATA_WIDTH => 34
-      case FLIT_BUFFER_DEPTH    => 4
+object ConnectConfig {
+  def apply() = Map(
+    "NUM_USER_SEND_PORTS"  -> 4,
+    "NUM_USER_RECV_PORTS"  -> 4,
+    "NUM_VCS"              -> 3,
+    "REAL_FLIT_DATA_WIDTH" -> 34,
+    "FLIT_BUFFER_DEPTH"    -> 4
+  )
+}
 
-      // Induced parameters, DO NOT CHANGE
-      case FLIT_DATA_WIDTH   => site(REAL_FLIT_DATA_WIDTH) - log2Up(site(NUM_USER_SEND_PORTS))
-      case SRC_BITS          => log2Up(site(NUM_USER_SEND_PORTS))
-      case DEST_BITS         => log2Up(site(NUM_USER_RECV_PORTS))
-      case VC_BITS           => log2Up(site(NUM_VCS))
-      case META_WIDTH        => site(SRC_BITS) + site(DEST_BITS) + site(VC_BITS) + 2
-      case FLIT_WIDTH        => site(FLIT_DATA_WIDTH) + site(META_WIDTH)
-      case PACKET_DATA_WIDTH => site(PACKET_WIDTH) - site(META_WIDTH)
-    })
+object AXI4WrapperConfig {
+  def apply(configs: Configs) = Map(
+    "PROTOCOL"              -> "AXI4",
+    "NUM_MASTER_DEVICES"    -> configs.getInt("NUM_USER_SEND_PORTS") / 2,
+    "NUM_SLAVE_DEVICES"     -> configs.getInt("NUM_USER_RECV_PORTS") / 2,
+    "AXI4_WRITE_INTERLEAVE" -> true,
+    "AXI4_MAX_BURST_LEN"    -> 16
+  )
+}
 
-case object PROTOCOL extends Field[String]
-case object NUM_MASTER_DEVICES extends Field[Int]
-case object NUM_SLAVE_DEVICES extends Field[Int]
-case object WRITE_INTERLEAVE extends Field[Boolean]
-case object AXI4_MAX_BURST_LEN extends Field[Int]
-case object PACKET_WIDTH extends Field[Int]
+object AXI4LiteWrapperConfig {
+  def apply(configs: Configs) = Map(
+    "PROTOCOL"              -> "AXI4-Lite",
+    "NUM_MASTER_DEVICES"    -> configs.getInt("NUM_USER_SEND_PORTS") / 2,
+    "NUM_SLAVE_DEVICES"     -> configs.getInt("NUM_USER_RECV_PORTS") / 2,
+    "AXI4_WRITE_INTERLEAVE" -> true
+  )
+}
 
-class AXI4WrapperConfig
-    extends Config((site, here, up) => {
-      case PROTOCOL           => "AXI4"
-      case NUM_MASTER_DEVICES => site(NUM_USER_SEND_PORTS) / 2
-      case NUM_SLAVE_DEVICES  => site(NUM_USER_RECV_PORTS) / 2
-      case WRITE_INTERLEAVE   => true
-      case AXI4_MAX_BURST_LEN => 16
-    })
+object AXI4StreamWrapperConfig {
+  def apply(configs: Configs) = Map(
+    "PROTOCOL"           -> "AXI4-Stream",
+    "NUM_MASTER_DEVICES" -> configs.getInt("NUM_USER_SEND_PORTS"),
+    "NUM_SLAVE_DEVICES"  -> configs.getInt("NUM_USER_RECV_PORTS")
+  )
+}
 
-class AXI4LiteWrapperConfig
-    extends Config((site, here, up) => {
-      case PROTOCOL           => "AXI4-Lite"
-      case NUM_MASTER_DEVICES => site(NUM_USER_SEND_PORTS) / 2
-      case NUM_SLAVE_DEVICES  => site(NUM_USER_RECV_PORTS) / 2
-      case WRITE_INTERLEAVE   => true
-    })
+object SimpleWrapperConfig {
+  def apply(configs: Configs) = Map(
+    "PROTOCOL"           -> "Simple",
+    "NUM_MASTER_DEVICES" -> configs.getInt("NUM_USER_SEND_PORTS"),
+    "NUM_SLAVE_DEVICES"  -> configs.getInt("NUM_USER_RECV_PORTS"),
+    "PACKET_WIDTH"       -> 72
+  )
+}
 
-class AXI4StreamWrapperConfig
-    extends Config((site, here, up) => {
-      case PROTOCOL           => "AXI4-Stream"
-      case NUM_MASTER_DEVICES => site(NUM_USER_SEND_PORTS)
-      case NUM_SLAVE_DEVICES  => site(NUM_USER_RECV_PORTS)
-    })
+object LibraryConfig {
+  def apply() = Map(
+    "USE_FIFO_IP" -> true,
+    "ALTERA_MF_V" -> "/afs/ece.cmu.edu/support/altera/release/pro-19.3.0.222/quartus/eda/sim_lib/altera_mf.v"
+  )
+}
 
-class SimpleWrapperConfig
-    extends Config((site, here, up) => {
-      case PROTOCOL           => "Simple"
-      case NUM_MASTER_DEVICES => site(NUM_USER_SEND_PORTS)
-      case NUM_SLAVE_DEVICES  => site(NUM_USER_RECV_PORTS)
-      case PACKET_WIDTH       => 80
-    })
+class Configs(configs: Map[String, Any]) {
+  def getBoolean(field: String, default: Boolean = false) = configs.getOrElse(field, default).asInstanceOf[Boolean]
+  def getInt(field:     String, default: Int     = 0)     = configs.getOrElse(field, default).asInstanceOf[Int]
+  def getString(field:  String, default: String  = "")    = configs.getOrElse(field, default).asInstanceOf[String]
+}
 
-case object USE_FIFO_IP extends Field[Boolean]
-case object ALTERA_MF_V extends Field[String]
+class NetworkConfigs(configs: Configs) {
+  val NUM_USER_SEND_PORTS  = configs.getInt("NUM_USER_SEND_PORTS")
+  val NUM_USER_RECV_PORTS  = configs.getInt("NUM_USER_RECV_PORTS")
+  val NUM_VCS              = configs.getInt("NUM_VCS")
+  val REAL_FLIT_DATA_WIDTH = configs.getInt("REAL_FLIT_DATA_WIDTH")
+  val FLIT_BUFFER_DEPTH    = configs.getInt("FLIT_BUFFER_DEPTH")
 
-class LibraryConfig
-    extends Config((site, here, up) => {
-      case USE_FIFO_IP => true
-      case ALTERA_MF_V => "/afs/ece.cmu.edu/support/altera/release/pro-19.3.0.222/quartus/eda/sim_lib/altera_mf.v"
-    })
+  val FLIT_DATA_WIDTH = REAL_FLIT_DATA_WIDTH - log2Up(NUM_USER_SEND_PORTS)
+  val SRC_BITS        = log2Up(NUM_USER_SEND_PORTS)
+  val DEST_BITS       = log2Up(NUM_USER_RECV_PORTS)
+  val VC_BITS         = log2Up(NUM_VCS)
+  val META_WIDTH      = SRC_BITS + DEST_BITS + VC_BITS + 2
+  val FLIT_WIDTH      = FLIT_DATA_WIDTH + META_WIDTH
 
-case object DEBUG_BRIDGE extends Field[Boolean]
-case object DEBUG_SERIALIZER extends Field[Boolean]
-case object DEBUG_DESERIALIZER extends Field[Boolean]
-case object DEBUG_NETWORK_FLIT extends Field[Boolean]
-case object DEBUG_NETWORK_CREDIT extends Field[Boolean]
+  val PROTOCOL           = configs.getString("PROTOCOL")
+  val NUM_MASTER_DEVICES = configs.getInt("NUM_MASTER_DEVICES")
+  val NUM_SLAVE_DEVICES  = configs.getInt("NUM_SLAVE_DEVICES")
 
-class DebugConfig
-    extends Config((site, here, up) => {
-      case DEBUG_BRIDGE         => false
-      case DEBUG_SERIALIZER     => false
-      case DEBUG_DESERIALIZER   => false
-      case DEBUG_NETWORK_FLIT   => false
-      case DEBUG_NETWORK_CREDIT => false
-    })
+  val PACKET_WIDTH = PROTOCOL match {
+    case "AXI4"        => AXI4PacketDataWidth() + META_WIDTH
+    case "AXI4-Lite"   => AXI4LitePacketDataWidth() + META_WIDTH
+    case "AXI4-Stream" => AXI4StreamPacketDataWidth() + META_WIDTH
+    case _             => configs.getInt("PACKET_WIDTH")
+  }
+  val PACKET_DATA_WIDTH = PACKET_WIDTH - META_WIDTH
 
-case object DEVICE_ID extends Field[Int]
-case object FIFO_VC extends Field[Int]
-case object AXI4_BUS_IO extends Field[AXI4LiteIO]
+  val AXI4_WRITE_INTERLEAVE = configs.getBoolean("AXI4_WRITE_INTERLEAVE", false)
+  val AXI4_MAX_BURST_LEN    = configs.getInt("AXI4_MAX_BURST_LEN", 1)
+  val AXI4_BUS_IO           = if (PROTOCOL == "AXI4") new AXI4IO else new AXI4LiteIO
 
-class AXI4Config extends Config(new ConnectConfig ++ new AXI4WrapperConfig ++ new LibraryConfig ++ new DebugConfig)
+  val USE_FIFO_IP = configs.getBoolean("USE_FIFO_IP")
+  val ALTERA_MF_V = configs.getString("ALTERA_MF_V")
 
-class AXI4LiteConfig
-    extends Config(new ConnectConfig ++ new AXI4LiteWrapperConfig ++ new LibraryConfig ++ new DebugConfig)
-
-class AXI4StreamConfig
-    extends Config(new ConnectConfig ++ new AXI4StreamWrapperConfig ++ new LibraryConfig ++ new DebugConfig)
-
-class SimpleConfig extends Config(new ConnectConfig ++ new SimpleWrapperConfig ++ new LibraryConfig ++ new DebugConfig)
+  val DEBUG_BRIDGE         = false
+  val DEBUG_SERIALIZER     = false
+  val DEBUG_DESERIALIZER   = false
+  val DEBUG_NETWORK_FLIT   = false
+  val DEBUG_NETWORK_CREDIT = false
+}

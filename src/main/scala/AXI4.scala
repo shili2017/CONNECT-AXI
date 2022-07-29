@@ -6,8 +6,8 @@ import chisel3.util._
 trait AXI4Parameters {
   val AXI4AddrWidth = 32
   val AXI4DataWidth = 64
-  val AXI4IdWidth   = 8
-  val AXI4UserWidth = 8 // Not used
+  val AXI4IdWidth   = 1
+  val AXI4UserWidth = 3
 }
 
 object AXI4Parameters extends AXI4Parameters {}
@@ -25,7 +25,7 @@ class AXI4LiteChannelA extends Bundle with AXI4Parameters {
   val prot = UInt(3.W)
 }
 
-class AXI4ChannelA extends AXI4LiteChannelA with AXI4Id {
+class AXI4ChannelA extends AXI4LiteChannelA with AXI4Id with AXI4User {
   val len    = UInt(8.W)
   val size   = UInt(3.W)
   val burst  = UInt(2.W)
@@ -40,7 +40,7 @@ class AXI4LiteChannelW extends Bundle with AXI4Parameters {
   val strb = UInt((AXI4DataWidth / 8).W)
 }
 
-class AXI4ChannelW extends AXI4LiteChannelW {
+class AXI4ChannelW extends AXI4LiteChannelW with AXI4User {
   val last = Bool()
 }
 
@@ -48,14 +48,14 @@ class AXI4LiteChannelB extends Bundle {
   val resp = UInt(2.W)
 }
 
-class AXI4ChannelB extends AXI4LiteChannelB with AXI4Id {}
+class AXI4ChannelB extends AXI4LiteChannelB with AXI4Id with AXI4User {}
 
 class AXI4LiteChannelR extends Bundle with AXI4Parameters {
   val data = UInt(AXI4DataWidth.W)
   val resp = UInt(2.W)
 }
 
-class AXI4ChannelR extends AXI4LiteChannelR with AXI4Id {
+class AXI4ChannelR extends AXI4LiteChannelR with AXI4Id with AXI4User {
   val last = Bool()
 }
 
@@ -75,7 +75,7 @@ class AXI4IO extends AXI4LiteIO {
   override val r  = Flipped(Decoupled(new AXI4ChannelR))
 }
 
-class AXI4StreamChannelT extends Bundle with AXI4Id {
+class AXI4StreamChannelT extends Bundle with AXI4Id with AXI4User {
   val data = UInt(AXI4DataWidth.W)
   val strb = UInt((AXI4DataWidth / 8).W)
   val keep = UInt((AXI4DataWidth / 8).W)
