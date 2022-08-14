@@ -1,3 +1,3 @@
 # CONNECT AXI4 Wrapper
 
-Docs will be added soon.
+[Documentation](docs/docs.md)
