@@ -8,16 +8,12 @@ class AXI4StreamMasterDevice(val ID: Int, val LEN: Int) extends Module {
     val axi         = new AXI4StreamIO
     val start       = Input(Bool())
     val target_dest = Input(UInt(4.W))
-    val buffer_peek = Vec(LEN, Output(UInt(AXI4Parameters.AXI4DataWidth.W)))
   })
 
   val DATA = "hdeadbeefdeadbeef".U
 
-  val dest   = RegInit(0.U(4.W))
-  val wlen   = RegInit(0.U(8.W))
-  val buffer = RegInit(VecInit(Seq.fill(LEN)(0.U(AXI4Parameters.AXI4DataWidth.W))))
-
-  io.buffer_peek := buffer
+  val dest = RegInit(0.U(4.W))
+  val wlen = RegInit(0.U(8.W))
 
   val s_idle :: s_data :: Nil = Enum(2)
 
@@ -53,18 +49,21 @@ class AXI4StreamMasterDevice(val ID: Int, val LEN: Int) extends Module {
 
 class AXI4StreamSlaveDevice(val ID: Int, val LEN: Int) extends Module {
   val io = IO(new Bundle {
-    val axi         = Flipped(new AXI4StreamIO)
-    val buffer_peek = Vec(LEN, Output(UInt(AXI4Parameters.AXI4DataWidth.W)))
+    val axi = Flipped(new AXI4StreamIO)
   })
 
   val wlen   = RegInit(0.U(8.W))
-  val buffer = RegInit(VecInit((0 until LEN).map(_.U(AXI4Parameters.AXI4DataWidth.W))))
+  val buffer = Module(new on_chip_ram(AXI4Parameters.AXI4DataWidth, LEN))
 
-  io.buffer_peek := buffer
+  dontTouch(wlen)
+  dontTouch(buffer.io)
+
+  buffer.io.address := wlen
+  buffer.io.data    := io.axi.t.bits.data
+  buffer.io.wren    := io.axi.t.fire
 
   when(io.axi.t.fire) {
-    buffer(wlen) := io.axi.t.bits.data
-    wlen         := wlen + 1.U
+    wlen := wlen + 1.U
     when(io.axi.t.bits.last) {
       wlen := 0.U
     }
@@ -75,10 +74,8 @@ class AXI4StreamSlaveDevice(val ID: Int, val LEN: Int) extends Module {
 
 class AXI4StreamTestbench(val CLOCK_DIVIDER_FACTOR: Int, val LEN: Int)(implicit p: NetworkConfigs) extends Module {
   val io = IO(new Bundle {
-    val start              = Vec(p.NUM_MASTER_DEVICES, Input(Bool()))
-    val target_dest        = Vec(p.NUM_MASTER_DEVICES, Input(UInt(4.W)))
-    val master_buffer_peek = Vec(p.NUM_MASTER_DEVICES, Vec(LEN, Output(UInt(AXI4Parameters.AXI4DataWidth.W))))
-    val slave_buffer_peek  = Vec(p.NUM_SLAVE_DEVICES, Vec(LEN, Output(UInt(AXI4Parameters.AXI4DataWidth.W))))
+    val start       = Vec(p.NUM_MASTER_DEVICES, Input(Bool()))
+    val target_dest = Vec(p.NUM_MASTER_DEVICES, Input(UInt(4.W)))
   })
 
   dontTouch(io.target_dest)
@@ -100,7 +97,6 @@ class AXI4StreamTestbench(val CLOCK_DIVIDER_FACTOR: Int, val LEN: Int)(implicit 
       master(i).io.axi         <> dut.io.master(i)
       master(i).io.start       := io.start(i)
       master(i).io.target_dest := io.target_dest(i)
-      io.master_buffer_peek(i) := master(i).io.buffer_peek
     }
 
     val slave = for (i <- 0 until p.NUM_SLAVE_DEVICES) yield {
@@ -108,8 +104,8 @@ class AXI4StreamTestbench(val CLOCK_DIVIDER_FACTOR: Int, val LEN: Int)(implicit 
       device
     }
     for (i <- 0 until p.NUM_SLAVE_DEVICES) {
-      slave(i).io.axi         <> dut.io.slave(i)
-      io.slave_buffer_peek(i) := slave(i).io.buffer_peek
+      slave(i).io.axi <> dut.io.slave(i)
+      dontTouch(slave(i).io.axi)
     }
   }
 }

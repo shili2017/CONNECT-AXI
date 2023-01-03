@@ -59,8 +59,8 @@ class scfifo(
     val empty        = Output(Bool())
     val almost_empty = Output(Bool())
 
-    val eccstatus = Output(UInt(2.W))
-    val usedw     = Output(UInt(lpm_widthu.W))
+    // val eccstatus = Output(UInt(2.W))
+    val usedw = Output(UInt(lpm_widthu.W))
   })
 
   addPath(new File(p.ALTERA_MF_V).getCanonicalPath)
@@ -129,9 +129,9 @@ class dcfifo(
     val rdfull  = Output(Bool())
     val rdempty = Output(Bool())
 
-    val eccstatus = Output(UInt(2.W))
-    val wrusedw   = Output(UInt(lpm_widthu.W))
-    val rdusedw   = Output(UInt(lpm_widthu.W))
+    // val eccstatus = Output(UInt(2.W))
+    val wrusedw = Output(UInt(lpm_widthu.W))
+    val rdusedw = Output(UInt(lpm_widthu.W))
   })
 
   addPath(new File(p.ALTERA_MF_V).getCanonicalPath)
