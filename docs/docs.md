@@ -86,7 +86,13 @@ $ python gen_network.py -t double_ring -w <flit_width> -n 4 -v <num_vcs> -d <fli
 To put the network in the chisel wrapper, remove all redundant files and test bench files, and
 
 ```bash
-$ cat *.v > network.v
+$ cat *.v > mkNetwork.v
+```
+
+Add the following macro to the beginning of generated verilog code.
+
+```verilog
+`define BSV_POSITIVE_RESET
 ```
 
 Then copy the network into `src/main/resources/vsrc` and copy the routing tables with `.hex` suffix to the working directory. Also emember to change the corresponding parameters in the chisel wrapper.
