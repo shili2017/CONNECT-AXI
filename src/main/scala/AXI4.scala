@@ -8,6 +8,7 @@ trait AXI4Parameters {
   val AXI4DataWidth = 64
   val AXI4IdWidth   = 1
   val AXI4UserWidth = 3
+  val AXI4DestWidth = 4
 }
 
 object AXI4Parameters extends AXI4Parameters {}

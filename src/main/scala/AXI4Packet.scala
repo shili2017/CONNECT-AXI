@@ -274,24 +274,24 @@ object Packet2AXI4StreamChannelT {
     assert(packet.getWidth == p.PACKET_WIDTH)
     val t = Wire(new AXI4StreamChannelT)
     t.user := packet(
-      4 + AXI4Parameters.AXI4DataWidth + AXI4Parameters.AXI4DataWidth / 4 + AXI4Parameters.AXI4IdWidth + AXI4Parameters.AXI4UserWidth,
-      5 + AXI4Parameters.AXI4DataWidth + AXI4Parameters.AXI4DataWidth / 4 + AXI4Parameters.AXI4IdWidth
+      AXI4Parameters.AXI4DestWidth + AXI4Parameters.AXI4DataWidth + AXI4Parameters.AXI4DataWidth / 4 + AXI4Parameters.AXI4IdWidth + AXI4Parameters.AXI4UserWidth,
+      AXI4Parameters.AXI4DestWidth + AXI4Parameters.AXI4DataWidth + AXI4Parameters.AXI4DataWidth / 4 + AXI4Parameters.AXI4IdWidth + 1
     )
     t.id := packet(
-      4 + AXI4Parameters.AXI4DataWidth + AXI4Parameters.AXI4DataWidth / 4 + AXI4Parameters.AXI4IdWidth,
-      5 + AXI4Parameters.AXI4DataWidth + AXI4Parameters.AXI4DataWidth / 4
+      AXI4Parameters.AXI4DestWidth + AXI4Parameters.AXI4DataWidth + AXI4Parameters.AXI4DataWidth / 4 + AXI4Parameters.AXI4IdWidth,
+      AXI4Parameters.AXI4DestWidth + AXI4Parameters.AXI4DataWidth + AXI4Parameters.AXI4DataWidth / 4 + 1
     )
     t.keep := packet(
-      4 + AXI4Parameters.AXI4DataWidth + AXI4Parameters.AXI4DataWidth / 4,
-      5 + AXI4Parameters.AXI4DataWidth + AXI4Parameters.AXI4DataWidth / 8
+      AXI4Parameters.AXI4DestWidth + AXI4Parameters.AXI4DataWidth + AXI4Parameters.AXI4DataWidth / 4,
+      AXI4Parameters.AXI4DestWidth + AXI4Parameters.AXI4DataWidth + AXI4Parameters.AXI4DataWidth / 8 + 1
     )
     t.strb := packet(
-      4 + AXI4Parameters.AXI4DataWidth + AXI4Parameters.AXI4DataWidth / 8,
-      5 + AXI4Parameters.AXI4DataWidth
+      AXI4Parameters.AXI4DestWidth + AXI4Parameters.AXI4DataWidth + AXI4Parameters.AXI4DataWidth / 8,
+      AXI4Parameters.AXI4DestWidth + AXI4Parameters.AXI4DataWidth + 1
     )
-    t.data := packet(4 + AXI4Parameters.AXI4DataWidth, 5)
-    t.last := packet(4).asBool
-    t.dest := packet(3, 0)
+    t.data := packet(AXI4Parameters.AXI4DestWidth + AXI4Parameters.AXI4DataWidth, AXI4Parameters.AXI4DestWidth + 1)
+    t.last := packet(AXI4Parameters.AXI4DestWidth).asBool
+    t.dest := packet(AXI4Parameters.AXI4DestWidth - 1, 0)
     t
   }
 }
