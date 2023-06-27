@@ -81,7 +81,7 @@ class AXI4StreamChannelT extends Bundle with AXI4Id with AXI4User {
   val strb = UInt((AXI4DataWidth / 8).W)
   val keep = UInt((AXI4DataWidth / 8).W)
   val last = Bool()
-  val dest = UInt(4.W)
+  val dest = UInt(AXI4DestWidth.W)
 }
 
 class AXI4StreamIO extends Bundle {
